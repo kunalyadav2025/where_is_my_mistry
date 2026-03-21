@@ -19,8 +19,12 @@ provider:
     DYNAMODB_OTP_TABLE: ${self:service}-otp-${self:provider.stage}
     DYNAMODB_ADMINS_TABLE: ${self:service}-admins-${self:provider.stage}
     S3_BUCKET_NAME: ${self:service}-uploads-${self:provider.stage}
-    JWT_SECRET: ${env:JWT_SECRET, 'dev-secret-change-in-production'}
+    JWT_SECRET: ${env:JWT_SECRET}
     JWT_EXPIRES_IN: '7d'
+    OTP_EXPIRY_SECONDS: '300'
+    OTP_MAX_ATTEMPTS: '5'
+    RATE_LIMIT_OTP_SEND: '3'
+    RATE_LIMIT_OTP_WINDOW: '900'
   iam:
     role:
       statements:

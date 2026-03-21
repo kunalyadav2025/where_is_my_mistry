@@ -41,6 +41,19 @@ export interface WorkerCreateInput {
   townId: string;
   experienceYears: number;
   bio?: string;
+  /**
+   * Full 12-digit Aadhaar number for verification only.
+   *
+   * SECURITY REQUIREMENTS:
+   * - This field is accepted ONLY during registration
+   * - MUST be hashed immediately using bcrypt before any storage
+   * - The full number is NEVER stored in the database
+   * - Only `aadhaarHash` (bcrypt hash) and `aadhaarLast4` (last 4 digits) are persisted
+   * - The full number should be cleared from memory after hashing
+   *
+   * Format: 12 digits (spaces allowed, will be stripped)
+   * Example: "1234 5678 9012" or "123456789012"
+   */
   aadhaarNumber: string;
 }
 

@@ -3,20 +3,25 @@
  * Currently mocked for development. Replace with actual Pinpoint implementation for production.
  */
 
-export interface SendOtpResult {
+import { logger, maskMobile } from '../utils/logger';
+
+export interface SendSmsResult {
   success: boolean;
   messageId?: string;
   error?: string;
 }
 
-export async function sendOtp(mobile: string, otp: string): Promise<SendOtpResult> {
-  const message = `Your Where is My Mistry verification code is: ${otp}. Valid for 5 minutes.`;
-
-  // In development, just log the OTP
+/**
+ * Send an SMS message
+ * Currently mocked - implement Pinpoint in production
+ */
+export async function sendSms(mobile: string, message: string): Promise<SendSmsResult> {
+  // In development, just log (without exposing sensitive data)
   if (process.env.NODE_ENV === 'dev' || process.env.NODE_ENV === 'development') {
-    console.log(`[MOCK SMS] To: +91${mobile}`);
-    console.log(`[MOCK SMS] Message: ${message}`);
-    console.log(`[MOCK SMS] OTP: ${otp}`);
+    logger.debug('Mock SMS sent', {
+      mobile: maskMobile(mobile),
+      messageLength: message.length,
+    });
 
     return {
       success: true,
@@ -24,7 +29,7 @@ export async function sendOtp(mobile: string, otp: string): Promise<SendOtpResul
     };
   }
 
-  // TODO: Implement actual Pinpoint SMS sending
+  // TODO: Implement actual Pinpoint SMS sending for production
   // import { PinpointClient, SendMessagesCommand } from '@aws-sdk/client-pinpoint';
   //
   // const pinpointClient = new PinpointClient({ region: process.env.AWS_REGION });
@@ -44,13 +49,18 @@ export async function sendOtp(mobile: string, otp: string): Promise<SendOtpResul
   //   },
   // };
 
-  console.warn('[SMS] Production SMS not implemented yet');
+  logger.warn('Production SMS not implemented', { mobile: maskMobile(mobile) });
+
   return {
     success: false,
     error: 'Production SMS not implemented',
   };
 }
 
+/**
+ * Generate a 6-digit OTP
+ * @deprecated Use otp.ts generateOtp instead
+ */
 export function generateOtp(): string {
   return Math.floor(100000 + Math.random() * 900000).toString();
 }

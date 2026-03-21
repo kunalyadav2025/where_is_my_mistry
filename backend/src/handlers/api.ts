@@ -2,6 +2,18 @@ import express, { Express } from 'express';
 import serverless from 'serverless-http';
 import routes from '../routes';
 import { errorHandler } from '../middleware/error';
+import { validateEnv } from '../utils/validateEnv';
+import { logger } from '../utils/logger';
+
+// Validate environment variables at module load time
+// This will fail the Lambda cold start if required variables are missing
+try {
+  validateEnv();
+  logger.info('Environment validation passed');
+} catch (error) {
+  logger.error('Environment validation failed', error as Error);
+  throw error; // Re-throw to fail Lambda initialization
+}
 
 const app: Express = express();
 
@@ -18,6 +30,20 @@ app.use((req, res, next) => {
   if (req.method === 'OPTIONS') {
     return res.status(200).end();
   }
+  next();
+});
+
+// Request logging
+app.use((req, res, next) => {
+  const start = Date.now();
+  res.on('finish', () => {
+    logger.info('Request completed', {
+      method: req.method,
+      path: req.path,
+      statusCode: res.statusCode,
+      duration: Date.now() - start,
+    });
+  });
   next();
 });
 
