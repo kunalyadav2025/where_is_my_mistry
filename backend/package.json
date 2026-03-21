@@ -1,0 +1,44 @@
+{
+  "name": "whereismymistry-backend",
+  "version": "1.0.0",
+  "description": "Serverless backend for Where is My Mistry app",
+  "main": "src/handlers/api.ts",
+  "scripts": {
+    "dev": "serverless offline start --stage dev",
+    "deploy": "serverless deploy --stage prod",
+    "deploy:dev": "serverless deploy --stage dev",
+    "seed:categories": "npx ts-node scripts/seed-categories.ts",
+    "seed:locations": "npx ts-node scripts/seed-locations.ts",
+    "typecheck": "tsc --noEmit"
+  },
+  "dependencies": {
+    "@aws-sdk/client-dynamodb": "^3.525.0",
+    "@aws-sdk/client-pinpoint": "^3.525.0",
+    "@aws-sdk/client-s3": "^3.525.0",
+    "@aws-sdk/lib-dynamodb": "^3.525.0",
+    "@aws-sdk/s3-request-presigner": "^3.525.0",
+    "bcryptjs": "^2.4.3",
+    "express": "^4.18.2",
+    "jsonwebtoken": "^9.0.2",
+    "serverless-http": "^3.2.0",
+    "uuid": "^9.0.1",
+    "zod": "^3.22.4"
+  },
+  "devDependencies": {
+    "@types/bcryptjs": "^2.4.6",
+    "@types/express": "^4.17.21",
+    "@types/jsonwebtoken": "^9.0.5",
+    "@types/node": "^20.11.0",
+    "@types/uuid": "^9.0.7",
+    "dotenv": "^16.4.5",
+    "esbuild": "^0.20.0",
+    "serverless": "^3.38.0",
+    "serverless-esbuild": "^1.52.0",
+    "serverless-offline": "^13.3.3",
+    "ts-node": "^10.9.2",
+    "typescript": "^5.3.3"
+  },
+  "engines": {
+    "node": ">=18.0.0"
+  }
+}
