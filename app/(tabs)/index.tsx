@@ -332,7 +332,7 @@ export default function HomeScreen() {
         {/* Top Header Row */}
         <View style={styles.headerRow}>
           <View style={styles.brandContainer}>
-            <Text style={[styles.brandName, { color: colors.text }]}>मेरा मिस्त्री</Text>
+            <Text style={[styles.brandName, { color: colors.text }]}>Where is My Mistry</Text>
             <View style={styles.locationRow}>
               <IconSymbol name="mappin.circle.fill" size={16} color={colors.primary} />
               <Text
