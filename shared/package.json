@@ -1,0 +1,8 @@
+{
+  "name": "@whereismymistry/shared",
+  "version": "1.0.0",
+  "description": "Shared TypeScript types and constants",
+  "main": "types/index.ts",
+  "types": "types/index.ts",
+  "private": true
+}

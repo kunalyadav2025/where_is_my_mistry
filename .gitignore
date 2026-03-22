@@ -21,6 +21,7 @@ out/
 
 # Serverless
 .serverless/
+.esbuild/
 
 # Environment files
 .env

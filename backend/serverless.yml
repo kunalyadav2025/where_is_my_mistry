@@ -1,0 +1,282 @@
+service: whereismymistry-api
+
+frameworkVersion: '3'
+
+useDotenv: true
+
+provider:
+  name: aws
+  runtime: nodejs18.x
+  stage: ${opt:stage, 'dev'}
+  region: ap-south-1
+  memorySize: 256
+  timeout: 29
+  environment:
+    NODE_ENV: ${self:provider.stage}
+    DYNAMODB_WORKERS_TABLE: ${self:service}-workers-${self:provider.stage}
+    DYNAMODB_PHOTOS_TABLE: ${self:service}-photos-${self:provider.stage}
+    DYNAMODB_REVIEWS_TABLE: ${self:service}-reviews-${self:provider.stage}
+    DYNAMODB_LOCATIONS_TABLE: ${self:service}-locations-${self:provider.stage}
+    DYNAMODB_CATEGORIES_TABLE: ${self:service}-categories-${self:provider.stage}
+    DYNAMODB_OTP_TABLE: ${self:service}-otp-${self:provider.stage}
+    DYNAMODB_ADMINS_TABLE: ${self:service}-admins-${self:provider.stage}
+    S3_BUCKET_NAME: ${self:service}-uploads-${self:provider.stage}
+    JWT_SECRET: ${env:JWT_SECRET}
+    JWT_EXPIRES_IN: '7d'
+    OTP_EXPIRY_SECONDS: '300'
+    OTP_MAX_ATTEMPTS: '5'
+    RATE_LIMIT_OTP_SEND: '3'
+    RATE_LIMIT_OTP_WINDOW: '900'
+  iam:
+    role:
+      statements:
+        - Effect: Allow
+          Action:
+            - dynamodb:Query
+            - dynamodb:Scan
+            - dynamodb:GetItem
+            - dynamodb:PutItem
+            - dynamodb:UpdateItem
+            - dynamodb:DeleteItem
+            - dynamodb:BatchGetItem
+            - dynamodb:BatchWriteItem
+          Resource:
+            - !GetAtt WorkersTable.Arn
+            - !Join ['/', [!GetAtt WorkersTable.Arn, 'index/*']]
+            - !GetAtt PhotosTable.Arn
+            - !Join ['/', [!GetAtt PhotosTable.Arn, 'index/*']]
+            - !GetAtt ReviewsTable.Arn
+            - !Join ['/', [!GetAtt ReviewsTable.Arn, 'index/*']]
+            - !GetAtt LocationsTable.Arn
+            - !Join ['/', [!GetAtt LocationsTable.Arn, 'index/*']]
+            - !GetAtt CategoriesTable.Arn
+            - !GetAtt OtpTable.Arn
+            - !GetAtt AdminsTable.Arn
+            - !Join ['/', [!GetAtt AdminsTable.Arn, 'index/*']]
+        - Effect: Allow
+          Action:
+            - s3:GetObject
+            - s3:PutObject
+            - s3:DeleteObject
+          Resource:
+            - !Join ['/', [!GetAtt UploadsBucket.Arn, '*']]
+        - Effect: Allow
+          Action:
+            - mobiletargeting:SendMessages
+          Resource: '*'
+
+plugins:
+  - serverless-esbuild
+  - serverless-offline
+
+custom:
+  esbuild:
+    bundle: true
+    minify: false
+    sourcemap: true
+    exclude:
+      - aws-sdk
+    target: node18
+    platform: node
+    concurrency: 10
+  serverless-offline:
+    httpPort: 3001
+    lambdaPort: 3002
+    noPrependStageInUrl: true
+
+functions:
+  api:
+    handler: src/handlers/api.handler
+    events:
+      - http:
+          path: /
+          method: ANY
+          cors: true
+      - http:
+          path: /{proxy+}
+          method: ANY
+          cors: true
+
+resources:
+  Resources:
+    # Workers Table
+    WorkersTable:
+      Type: AWS::DynamoDB::Table
+      Properties:
+        TableName: ${self:provider.environment.DYNAMODB_WORKERS_TABLE}
+        BillingMode: PAY_PER_REQUEST
+        AttributeDefinitions:
+          - AttributeName: pk
+            AttributeType: S
+          - AttributeName: sk
+            AttributeType: S
+          - AttributeName: mobile
+            AttributeType: S
+          - AttributeName: townCategory
+            AttributeType: S
+          - AttributeName: sortKey
+            AttributeType: S
+        KeySchema:
+          - AttributeName: pk
+            KeyType: HASH
+          - AttributeName: sk
+            KeyType: RANGE
+        GlobalSecondaryIndexes:
+          - IndexName: MobileIndex
+            KeySchema:
+              - AttributeName: mobile
+                KeyType: HASH
+            Projection:
+              ProjectionType: ALL
+          - IndexName: TownCategoryIndex
+            KeySchema:
+              - AttributeName: townCategory
+                KeyType: HASH
+              - AttributeName: sortKey
+                KeyType: RANGE
+            Projection:
+              ProjectionType: ALL
+
+    # Worker Photos Table
+    PhotosTable:
+      Type: AWS::DynamoDB::Table
+      Properties:
+        TableName: ${self:provider.environment.DYNAMODB_PHOTOS_TABLE}
+        BillingMode: PAY_PER_REQUEST
+        AttributeDefinitions:
+          - AttributeName: pk
+            AttributeType: S
+          - AttributeName: sk
+            AttributeType: S
+        KeySchema:
+          - AttributeName: pk
+            KeyType: HASH
+          - AttributeName: sk
+            KeyType: RANGE
+
+    # Reviews Table
+    ReviewsTable:
+      Type: AWS::DynamoDB::Table
+      Properties:
+        TableName: ${self:provider.environment.DYNAMODB_REVIEWS_TABLE}
+        BillingMode: PAY_PER_REQUEST
+        AttributeDefinitions:
+          - AttributeName: pk
+            AttributeType: S
+          - AttributeName: sk
+            AttributeType: S
+          - AttributeName: reviewerHash
+            AttributeType: S
+          - AttributeName: workerId
+            AttributeType: S
+        KeySchema:
+          - AttributeName: pk
+            KeyType: HASH
+          - AttributeName: sk
+            KeyType: RANGE
+        GlobalSecondaryIndexes:
+          - IndexName: ReviewerIndex
+            KeySchema:
+              - AttributeName: reviewerHash
+                KeyType: HASH
+              - AttributeName: workerId
+                KeyType: RANGE
+            Projection:
+              ProjectionType: ALL
+
+    # Locations Table
+    LocationsTable:
+      Type: AWS::DynamoDB::Table
+      Properties:
+        TableName: ${self:provider.environment.DYNAMODB_LOCATIONS_TABLE}
+        BillingMode: PAY_PER_REQUEST
+        AttributeDefinitions:
+          - AttributeName: pk
+            AttributeType: S
+          - AttributeName: sk
+            AttributeType: S
+        KeySchema:
+          - AttributeName: pk
+            KeyType: HASH
+          - AttributeName: sk
+            KeyType: RANGE
+
+    # Categories Table
+    CategoriesTable:
+      Type: AWS::DynamoDB::Table
+      Properties:
+        TableName: ${self:provider.environment.DYNAMODB_CATEGORIES_TABLE}
+        BillingMode: PAY_PER_REQUEST
+        AttributeDefinitions:
+          - AttributeName: pk
+            AttributeType: S
+          - AttributeName: sk
+            AttributeType: S
+        KeySchema:
+          - AttributeName: pk
+            KeyType: HASH
+          - AttributeName: sk
+            KeyType: RANGE
+
+    # OTP Codes Table
+    OtpTable:
+      Type: AWS::DynamoDB::Table
+      Properties:
+        TableName: ${self:provider.environment.DYNAMODB_OTP_TABLE}
+        BillingMode: PAY_PER_REQUEST
+        AttributeDefinitions:
+          - AttributeName: pk
+            AttributeType: S
+          - AttributeName: sk
+            AttributeType: S
+        KeySchema:
+          - AttributeName: pk
+            KeyType: HASH
+          - AttributeName: sk
+            KeyType: RANGE
+        TimeToLiveSpecification:
+          AttributeName: expiresAt
+          Enabled: true
+
+    # Admins Table
+    AdminsTable:
+      Type: AWS::DynamoDB::Table
+      Properties:
+        TableName: ${self:provider.environment.DYNAMODB_ADMINS_TABLE}
+        BillingMode: PAY_PER_REQUEST
+        AttributeDefinitions:
+          - AttributeName: pk
+            AttributeType: S
+          - AttributeName: sk
+            AttributeType: S
+          - AttributeName: email
+            AttributeType: S
+        KeySchema:
+          - AttributeName: pk
+            KeyType: HASH
+          - AttributeName: sk
+            KeyType: RANGE
+        GlobalSecondaryIndexes:
+          - IndexName: EmailIndex
+            KeySchema:
+              - AttributeName: email
+                KeyType: HASH
+            Projection:
+              ProjectionType: ALL
+
+    # S3 Uploads Bucket
+    UploadsBucket:
+      Type: AWS::S3::Bucket
+      Properties:
+        BucketName: ${self:provider.environment.S3_BUCKET_NAME}
+        CorsConfiguration:
+          CorsRules:
+            - AllowedHeaders:
+                - '*'
+              AllowedMethods:
+                - GET
+                - PUT
+                - POST
+              AllowedOrigins:
+                - '*'
+              MaxAge: 3000
