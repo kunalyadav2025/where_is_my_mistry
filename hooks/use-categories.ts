@@ -1,40 +1,29 @@
-import { useState, useEffect } from 'react';
-import { api } from '@/services/api';
-import { API_ENDPOINTS } from '@/constants/api';
+import { useState, useCallback } from 'react';
 import type { Category } from '@/shared/types';
 
+// Static categories - these don't change frequently, so no need for API call
+const STATIC_CATEGORIES: Category[] = [
+  { categoryId: 'plumber', name: 'Plumber', nameHindi: 'प्लंबर' },
+  { categoryId: 'electrician', name: 'Electrician', nameHindi: 'इलेक्ट्रीशियन' },
+  { categoryId: 'painter', name: 'Painter', nameHindi: 'पेंटर' },
+  { categoryId: 'carpenter', name: 'Carpenter', nameHindi: 'बढ़ई' },
+  { categoryId: 'welder', name: 'Welder', nameHindi: 'वेल्डर' },
+  { categoryId: 'ac-repair', name: 'AC Repair', nameHindi: 'AC मरम्मत' },
+];
+
 export function useCategories() {
-  const [categories, setCategories] = useState<Category[]>([]);
-  const [isLoading, setIsLoading] = useState(true);
-  const [error, setError] = useState<string | null>(null);
+  const [categories] = useState<Category[]>(STATIC_CATEGORIES);
+  const [isLoading] = useState(false);
+  const [error] = useState<string | null>(null);
 
-  const fetchCategories = async () => {
-    setIsLoading(true);
-    setError(null);
-
-    try {
-      const response = await api.get<{ categories: Category[] }>(API_ENDPOINTS.CATEGORIES);
-
-      if (response.success && response.data) {
-        setCategories(response.data.categories);
-      } else {
-        setError(response.error?.message || 'Failed to load categories');
-      }
-    } catch (err) {
-      setError('Network error. Please try again.');
-    } finally {
-      setIsLoading(false);
-    }
-  };
-
-  useEffect(() => {
-    fetchCategories();
+  const refetch = useCallback(() => {
+    // Categories are static, no need to refetch
   }, []);
 
   return {
     categories,
     isLoading,
     error,
-    refetch: fetchCategories,
+    refetch,
   };
 }

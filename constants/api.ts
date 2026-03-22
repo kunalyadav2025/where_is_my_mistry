@@ -1,16 +1,8 @@
-import Constants from 'expo-constants';
-
 const getApiBaseUrl = (): string => {
-  // In development, use local serverless-offline endpoint
-  if (__DEV__) {
-    // For Android emulator, use 10.0.2.2 instead of localhost
-    // For iOS simulator and web, use localhost
-    const localhost = Constants.platform?.android ? '10.0.2.2' : 'localhost';
-    return `http://${localhost}:3001/api`;
-  }
-
-  // In production, use the deployed API Gateway URL
-  return Constants.expoConfig?.extra?.apiUrl || 'https://oaa2rqfw3i.execute-api.ap-south-1.amazonaws.com/dev/api';
+  // Always use production API URL
+  // The backend is deployed to AWS and works for both development and production
+  // Note: localhost doesn't work on physical devices (it refers to the phone itself)
+  return 'https://oaa2rqfw3i.execute-api.ap-south-1.amazonaws.com/dev/api';
 };
 
 export const API_BASE_URL = getApiBaseUrl();
