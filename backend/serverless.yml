@@ -2,6 +2,8 @@ service: whereismymistry-api
 
 frameworkVersion: '3'
 
+useDotenv: true
+
 provider:
   name: aws
   runtime: nodejs18.x

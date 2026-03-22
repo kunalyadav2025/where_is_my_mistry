@@ -10,8 +10,7 @@ const getApiBaseUrl = (): string => {
   }
 
   // In production, use the deployed API Gateway URL
-  // This will be set via EAS build environment variables
-  return Constants.expoConfig?.extra?.apiUrl || 'https://api.whereismymistry.com/api';
+  return Constants.expoConfig?.extra?.apiUrl || 'https://oaa2rqfw3i.execute-api.ap-south-1.amazonaws.com/dev/api';
 };
 
 export const API_BASE_URL = getApiBaseUrl();

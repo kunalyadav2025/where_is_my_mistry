@@ -42,6 +42,7 @@
     "esbuild": "^0.20.0",
     "jest": "^30.3.0",
     "serverless": "^3.38.0",
+    "serverless-dotenv-plugin": "^6.0.0",
     "serverless-esbuild": "^1.52.0",
     "serverless-offline": "^13.3.3",
     "supertest": "^7.2.2",
