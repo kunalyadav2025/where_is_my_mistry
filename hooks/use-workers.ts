@@ -3,6 +3,20 @@ import { api } from '@/services/api';
 import { API_ENDPOINTS } from '@/constants/api';
 import type { Worker } from '@/shared/types';
 
+// All available category IDs for multi-category queries
+const ALL_CATEGORY_IDS = [
+  'plumber',
+  'electrician',
+  'painter',
+  'raj-mistry',
+  'carpenter',
+  'welder',
+  'ac-repair',
+  'washing-machine',
+  'cycle-repair',
+  'bike-service',
+];
+
 interface UseWorkersParams {
   categoryId?: string;
   townId?: string;
@@ -90,6 +104,129 @@ export function useWorkers(params: UseWorkersParams = {}) {
     loadMore,
     refresh,
   };
+}
+
+/**
+ * Hook to fetch workers from multiple categories in parallel.
+ * Used when "All" category filter is selected.
+ * Since backend requires both townId + categoryId, we make parallel API calls.
+ */
+interface UseWorkersMultiCategoryParams {
+  townId?: string;
+  categoryIds?: string[];
+  enabled?: boolean;
+}
+
+export function useWorkersMultiCategory(params: UseWorkersMultiCategoryParams = {}) {
+  const [workers, setWorkers] = useState<Worker[]>([]);
+  const [isLoading, setIsLoading] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+
+  const { townId, categoryIds = ALL_CATEGORY_IDS, enabled = true } = params;
+
+  const fetchAllWorkers = useCallback(async () => {
+    if (!townId || !enabled) {
+      setWorkers([]);
+      return;
+    }
+
+    setIsLoading(true);
+    setError(null);
+
+    try {
+      // Make parallel API calls for each category
+      const promises = categoryIds.map(async (categoryId) => {
+        const queryParams = new URLSearchParams();
+        queryParams.append('categoryId', categoryId);
+        queryParams.append('townId', townId);
+        queryParams.append('limit', '10'); // Limit per category
+
+        const endpoint = `${API_ENDPOINTS.WORKERS}?${queryParams.toString()}`;
+        const response = await api.get<WorkersResponse>(endpoint);
+
+        if (response.success && response.data) {
+          return response.data.workers;
+        }
+        return [];
+      });
+
+      const results = await Promise.all(promises);
+
+      // Flatten and merge all workers
+      const allWorkers = results.flat();
+
+      // Sort by rating (highest first), then by review count
+      allWorkers.sort((a, b) => {
+        if (b.avgRating !== a.avgRating) {
+          return b.avgRating - a.avgRating;
+        }
+        return b.reviewCount - a.reviewCount;
+      });
+
+      setWorkers(allWorkers);
+    } catch (err) {
+      console.error('Multi-category fetch error:', err);
+      setError('Failed to load workers');
+    } finally {
+      setIsLoading(false);
+    }
+  }, [townId, categoryIds, enabled]);
+
+  useEffect(() => {
+    fetchAllWorkers();
+  }, [fetchAllWorkers]);
+
+  const refresh = useCallback(() => {
+    fetchAllWorkers();
+  }, [fetchAllWorkers]);
+
+  return {
+    workers,
+    isLoading,
+    error,
+    refresh,
+  };
+}
+
+/**
+ * Combined hook that handles both single category and multi-category queries.
+ * When categoryId is 'all' or undefined, fetches from all categories.
+ */
+interface UseNearbyWorkersParams {
+  townId?: string;
+  categoryId?: string; // 'all' or specific category
+}
+
+export function useNearbyWorkers(params: UseNearbyWorkersParams) {
+  const { townId, categoryId } = params;
+  const isAllCategories = !categoryId || categoryId === 'all';
+
+  // Single category hook
+  const singleCategory = useWorkers({
+    categoryId: isAllCategories ? undefined : categoryId,
+    townId,
+  });
+
+  // Multi-category hook
+  const multiCategory = useWorkersMultiCategory({
+    townId,
+    enabled: isAllCategories && !!townId,
+  });
+
+  // Return appropriate results based on selection
+  if (isAllCategories) {
+    return {
+      workers: multiCategory.workers,
+      isLoading: multiCategory.isLoading,
+      error: multiCategory.error,
+      refresh: multiCategory.refresh,
+      hasMore: false, // Multi-category doesn't support pagination yet
+      loadMore: () => {},
+      isLoadingMore: false,
+    };
+  }
+
+  return singleCategory;
 }
 
 export function useWorkerDetail(workerId: string | null) {
