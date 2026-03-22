@@ -2,12 +2,15 @@ import React, { useState, useEffect } from 'react';
 import {
   View,
   Text,
+  TextInput,
   TouchableOpacity,
   StyleSheet,
   ScrollView,
   SafeAreaView,
   ActivityIndicator,
   Alert,
+  Platform,
+  StatusBar,
 } from 'react-native';
 import { useRouter, useLocalSearchParams } from 'expo-router';
 import { useLocations } from '@/hooks/use-locations';
@@ -27,7 +30,6 @@ export default function RegisterLocationScreen() {
     categoryId: string;
     categoryName: string;
     experienceYears: string;
-    mobile: string;
   }>();
   const colorScheme = useColorScheme();
   const colors = Colors[colorScheme ?? 'light'];
@@ -48,6 +50,7 @@ export default function RegisterLocationScreen() {
   const [selectedDistrict, setSelectedDistrict] = useState<LocationItem | null>(null);
   const [selectedTehsil, setSelectedTehsil] = useState<LocationItem | null>(null);
   const [selectedTown, setSelectedTown] = useState<LocationItem | null>(null);
+  const [pinCode, setPinCode] = useState('');
 
   useEffect(() => {
     fetchStates();
@@ -78,9 +81,16 @@ export default function RegisterLocationScreen() {
     setSelectedTown(town);
   };
 
+  const validatePinCode = (pin: string) => /^\d{6}$/.test(pin);
+
   const handleNext = () => {
     if (!selectedState || !selectedDistrict || !selectedTehsil || !selectedTown) {
       Alert.alert('Required', 'Please select all location fields');
+      return;
+    }
+
+    if (!validatePinCode(pinCode)) {
+      Alert.alert('Invalid PIN', 'Please enter a valid 6-digit PIN code');
       return;
     }
 
@@ -96,6 +106,7 @@ export default function RegisterLocationScreen() {
         tehsilName: selectedTehsil.name,
         townId: selectedTown.id,
         townName: selectedTown.name,
+        pinCode,
       },
     });
   };
@@ -211,12 +222,34 @@ export default function RegisterLocationScreen() {
           !selectedTehsil
         )}
 
+        {/* PIN Code Input */}
+        <View style={[styles.section, !selectedTown && styles.sectionDisabled]}>
+          <Text style={[styles.sectionTitle, { color: colors.text }]}>PIN Code *</Text>
+          <TextInput
+            style={[
+              styles.pinInput,
+              {
+                color: colors.text,
+                borderColor: colors.tabIconDefault,
+                backgroundColor: colors.card,
+              },
+            ]}
+            placeholder="Enter 6-digit PIN code"
+            placeholderTextColor={colors.tabIconDefault}
+            value={pinCode}
+            onChangeText={(text) => setPinCode(text.replace(/\D/g, '').substring(0, 6))}
+            keyboardType="number-pad"
+            maxLength={6}
+            editable={!!selectedTown}
+          />
+        </View>
+
         {/* Selected Summary */}
-        {selectedTown && (
+        {selectedTown && pinCode.length === 6 && (
           <View style={[styles.summaryCard, { backgroundColor: colors.card }]}>
             <IconSymbol name="location.fill" size={20} color={colors.tint} />
             <Text style={[styles.summaryText, { color: colors.text }]}>
-              {selectedTown.name}, {selectedTehsil?.name}, {selectedDistrict?.name}, {selectedState?.name}
+              {selectedTown.name}, {selectedTehsil?.name}, {selectedDistrict?.name}, {selectedState?.name} - {pinCode}
             </Text>
           </View>
         )}
@@ -227,12 +260,12 @@ export default function RegisterLocationScreen() {
           style={[
             styles.nextButton,
             { backgroundColor: colors.tint },
-            !selectedTown && styles.buttonDisabled,
+            (!selectedTown || !validatePinCode(pinCode)) && styles.buttonDisabled,
           ]}
           onPress={handleNext}
-          disabled={!selectedTown}
+          disabled={!selectedTown || !validatePinCode(pinCode)}
         >
-          <Text style={styles.nextButtonText}>Next: Final Details</Text>
+          <Text style={styles.nextButtonText}>Next: Verify Mobile</Text>
           <IconSymbol name="chevron.right" size={20} color="#fff" />
         </TouchableOpacity>
       </View>
@@ -250,6 +283,7 @@ const styles = StyleSheet.create({
     justifyContent: 'space-between',
     paddingHorizontal: 20,
     paddingVertical: 16,
+    paddingTop: Platform.OS === 'android' ? (StatusBar.currentHeight || 24) + 16 : 16,
   },
   backButton: {
     flexDirection: 'row',
@@ -328,6 +362,13 @@ const styles = StyleSheet.create({
   emptyText: {
     fontSize: 14,
     fontStyle: 'italic',
+  },
+  pinInput: {
+    height: 48,
+    borderWidth: 1,
+    borderRadius: 8,
+    paddingHorizontal: 16,
+    fontSize: 16,
   },
   summaryCard: {
     flexDirection: 'row',

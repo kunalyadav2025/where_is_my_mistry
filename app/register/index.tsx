@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState } from 'react';
 import {
   View,
   Text,
@@ -9,9 +9,10 @@ import {
   SafeAreaView,
   ActivityIndicator,
   Alert,
+  Platform,
+  StatusBar,
 } from 'react-native';
 import { useRouter } from 'expo-router';
-import { useAuth } from '@/contexts/AuthContext';
 import { useCategories } from '@/hooks/use-categories';
 import { Colors } from '@/constants/theme';
 import { useColorScheme } from '@/hooks/use-color-scheme';
@@ -21,21 +22,11 @@ export default function RegisterStep1Screen() {
   const router = useRouter();
   const colorScheme = useColorScheme();
   const colors = Colors[colorScheme ?? 'light'];
-  const { user, isAuthenticated } = useAuth();
   const { categories, isLoading: loadingCategories } = useCategories();
 
   const [name, setName] = useState('');
   const [selectedCategory, setSelectedCategory] = useState<string | null>(null);
   const [experienceYears, setExperienceYears] = useState('');
-
-  useEffect(() => {
-    if (!isAuthenticated) {
-      Alert.alert('Login Required', 'Please login to register as a worker', [
-        { text: 'Login', onPress: () => router.replace('/(auth)/login' as any) },
-        { text: 'Cancel', onPress: () => router.back() },
-      ]);
-    }
-  }, [isAuthenticated]);
 
   const handleNext = () => {
     if (!name.trim()) {
@@ -60,7 +51,6 @@ export default function RegisterStep1Screen() {
         categoryId: selectedCategory,
         categoryName: category?.name || '',
         experienceYears,
-        mobile: user?.mobile || '',
       },
     });
   };
@@ -106,17 +96,6 @@ export default function RegisterStep1Screen() {
             onChangeText={setName}
             autoCapitalize="words"
           />
-        </View>
-
-        {/* Mobile (Read-only) */}
-        <View style={styles.inputGroup}>
-          <Text style={[styles.label, { color: colors.text }]}>Mobile Number</Text>
-          <View style={[styles.readOnlyInput, { borderColor: colors.tabIconDefault, backgroundColor: colors.card }]}>
-            <Text style={[styles.readOnlyText, { color: colors.tabIconDefault }]}>
-              +91 {user?.mobile}
-            </Text>
-            <IconSymbol name="checkmark.circle.fill" size={20} color="#22c55e" />
-          </View>
         </View>
 
         {/* Category Selection */}
@@ -195,6 +174,7 @@ const styles = StyleSheet.create({
     justifyContent: 'space-between',
     paddingHorizontal: 20,
     paddingVertical: 16,
+    paddingTop: Platform.OS === 'android' ? (StatusBar.currentHeight || 24) + 16 : 16,
   },
   backButton: {
     flexDirection: 'row',
@@ -247,18 +227,6 @@ const styles = StyleSheet.create({
     borderWidth: 1,
     borderRadius: 8,
     paddingHorizontal: 16,
-    fontSize: 16,
-  },
-  readOnlyInput: {
-    height: 48,
-    borderWidth: 1,
-    borderRadius: 8,
-    paddingHorizontal: 16,
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'space-between',
-  },
-  readOnlyText: {
     fontSize: 16,
   },
   categoryGrid: {

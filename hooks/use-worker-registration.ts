@@ -16,6 +16,7 @@ export interface WorkerRegistrationData {
   districtName: string;
   stateId: string;
   stateName: string;
+  pinCode: string;
   experienceYears: number;
   bio?: string;
   aadhaarNumber: string;
