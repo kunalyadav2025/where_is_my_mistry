@@ -38,7 +38,16 @@ export interface WorkerCreateInput {
   name: string;
   mobile: string;
   categoryId: string;
+  categoryName: string;
   townId: string;
+  townName: string;
+  tehsilId: string;
+  tehsilName: string;
+  districtId: string;
+  districtName: string;
+  stateId: string;
+  stateName: string;
+  pinCode: string;
   experienceYears: number;
   bio?: string;
   /**

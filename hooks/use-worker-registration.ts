@@ -1,26 +1,10 @@
 import { useState } from 'react';
 import { api } from '@/services/api';
 import { API_ENDPOINTS } from '@/constants/api';
-import type { Worker } from '@/shared/types';
+import type { Worker, WorkerCreateInput } from '@/shared/types';
 
-export interface WorkerRegistrationData {
-  name: string;
-  mobile: string;
-  categoryId: string;
-  categoryName: string;
-  townId: string;
-  townName: string;
-  tehsilId: string;
-  tehsilName: string;
-  districtId: string;
-  districtName: string;
-  stateId: string;
-  stateName: string;
-  pinCode: string;
-  experienceYears: number;
-  bio?: string;
-  aadhaarNumber: string;
-}
+// Use shared type for registration data
+export type WorkerRegistrationData = WorkerCreateInput;
 
 interface RegisterWorkerResponse {
   message: string;
@@ -36,7 +20,9 @@ export function useWorkerRegistration() {
     setError(null);
 
     try {
-      const response = await api.post<RegisterWorkerResponse>(API_ENDPOINTS.WORKERS, data as unknown as Record<string, unknown>);
+      // Convert to Record type for API call
+      const payload: Record<string, unknown> = { ...data };
+      const response = await api.post<RegisterWorkerResponse>(API_ENDPOINTS.WORKERS, payload);
 
       if (!response.success) {
         const errorMessage = response.error?.message || 'Registration failed';
@@ -44,9 +30,17 @@ export function useWorkerRegistration() {
         return null;
       }
 
+      // Validate response has worker data
+      if (!response.data?.worker) {
+        setError('Registration failed - no worker data returned');
+        return null;
+      }
+
       return response.data;
     } catch (err) {
-      setError('Network error. Please try again.');
+      // Provide more specific error messages
+      const message = err instanceof Error ? err.message : 'An unexpected error occurred';
+      setError(message);
       return null;
     } finally {
       setIsLoading(false);

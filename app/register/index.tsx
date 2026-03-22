@@ -37,8 +37,9 @@ export default function RegisterStep1Screen() {
       Alert.alert('Required', 'Please select your work category');
       return;
     }
-    if (!experienceYears || parseInt(experienceYears) < 0) {
-      Alert.alert('Required', 'Please enter your years of experience');
+    const years = parseInt(experienceYears, 10);
+    if (isNaN(years) || years < 0 || years > 50) {
+      Alert.alert('Invalid Experience', 'Please enter experience between 0-50 years');
       return;
     }
 
@@ -95,6 +96,8 @@ export default function RegisterStep1Screen() {
             value={name}
             onChangeText={setName}
             autoCapitalize="words"
+            accessibilityLabel="Full name input"
+            accessibilityHint="Enter your full name as it appears on your ID"
           />
         </View>
 
@@ -115,6 +118,9 @@ export default function RegisterStep1Screen() {
                   },
                 ]}
                 onPress={() => setSelectedCategory(category.categoryId)}
+                accessibilityLabel={`${category.name} category`}
+                accessibilityRole="button"
+                accessibilityState={{ selected: selectedCategory === category.categoryId }}
               >
                 <Text
                   style={[
@@ -142,6 +148,8 @@ export default function RegisterStep1Screen() {
             onChangeText={(text) => setExperienceYears(text.replace(/[^0-9]/g, ''))}
             keyboardType="number-pad"
             maxLength={2}
+            accessibilityLabel="Years of experience"
+            accessibilityHint="Enter number of years between 0 and 50"
           />
         </View>
       </ScrollView>
@@ -150,6 +158,9 @@ export default function RegisterStep1Screen() {
         <TouchableOpacity
           style={[styles.nextButton, { backgroundColor: colors.tint }]}
           onPress={handleNext}
+          accessibilityLabel="Next step"
+          accessibilityHint="Proceed to location selection"
+          accessibilityRole="button"
         >
           <Text style={styles.nextButtonText}>Next: Select Location</Text>
           <IconSymbol name="chevron.right" size={20} color="#fff" />

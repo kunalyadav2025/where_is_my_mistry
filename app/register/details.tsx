@@ -91,6 +91,7 @@ export default function RegisterDetailsScreen() {
     const result = await verifyOtp(mobile, otp);
     if (result) {
       setIsMobileVerified(true);
+      setOtp(''); // Clear OTP from memory after successful verification
       Alert.alert('Verified', 'Mobile number verified successfully!');
     }
   };
@@ -310,12 +311,28 @@ export default function RegisterDetailsScreen() {
               )}
             </>
           ) : (
-            <View style={[styles.verifiedContainer, { backgroundColor: colors.card, borderColor: '#22c55e' }]}>
-              <Text style={[styles.verifiedMobile, { color: colors.text }]}>+91 {mobile}</Text>
-              <View style={styles.verifiedBadge}>
-                <IconSymbol name="checkmark.circle.fill" size={18} color="#22c55e" />
-                <Text style={styles.verifiedBadgeText}>Verified</Text>
+            <View>
+              <View style={[styles.verifiedContainer, { backgroundColor: colors.card, borderColor: '#22c55e' }]}>
+                <Text style={[styles.verifiedMobile, { color: colors.text }]}>+91 {mobile}</Text>
+                <View style={styles.verifiedBadge}>
+                  <IconSymbol name="checkmark.circle.fill" size={18} color="#22c55e" />
+                  <Text style={styles.verifiedBadgeText}>Verified</Text>
+                </View>
               </View>
+              <TouchableOpacity
+                onPress={() => {
+                  setIsMobileVerified(false);
+                  setIsOtpSent(false);
+                  setMobile('');
+                  setOtp('');
+                  clearError();
+                }}
+                style={styles.changeVerifiedNumber}
+                accessibilityLabel="Change mobile number"
+                accessibilityHint="Reset mobile verification and enter a different number"
+              >
+                <Text style={[styles.changeNumberText, { color: colors.tint }]}>Use Different Number</Text>
+              </TouchableOpacity>
             </View>
           )}
         </View>
@@ -373,6 +390,10 @@ export default function RegisterDetailsScreen() {
         <TouchableOpacity
           style={styles.termsRow}
           onPress={() => setAgreedToTerms(!agreedToTerms)}
+          accessibilityLabel="Terms and conditions agreement"
+          accessibilityRole="checkbox"
+          accessibilityState={{ checked: agreedToTerms }}
+          accessibilityHint="Tap to agree to terms of service and privacy policy"
         >
           <View
             style={[
@@ -700,5 +721,10 @@ const styles = StyleSheet.create({
     color: '#22c55e',
     fontSize: 14,
     fontWeight: '600',
+  },
+  changeVerifiedNumber: {
+    alignSelf: 'center',
+    marginTop: 12,
+    paddingVertical: 8,
   },
 });

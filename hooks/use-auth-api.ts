@@ -36,7 +36,8 @@ export function useAuthApi() {
 
       return response.data;
     } catch (err) {
-      setError('Network error. Please try again.');
+      const message = err instanceof Error ? err.message : 'Failed to send OTP. Please check your connection.';
+      setError(message);
       return null;
     } finally {
       setIsLoading(false);
@@ -60,7 +61,8 @@ export function useAuthApi() {
 
       return response.data;
     } catch (err) {
-      setError('Network error. Please try again.');
+      const message = err instanceof Error ? err.message : 'Failed to verify OTP. Please check your connection.';
+      setError(message);
       return null;
     } finally {
       setIsLoading(false);
