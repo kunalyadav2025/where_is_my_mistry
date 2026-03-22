@@ -5,7 +5,7 @@
 
 import { v4 as uuidv4 } from 'uuid';
 import bcrypt from 'bcryptjs';
-import { dynamodb, Tables, createItem, getItem, updateItem, queryItems, incrementCounter, DuplicateEntryError } from './dynamodb';
+import { dynamodb, Tables, getItem, updateItem, queryItems, incrementCounter, DuplicateEntryError, createWorkerWithMobileUniqueness } from './dynamodb';
 import { QueryCommand } from '@aws-sdk/lib-dynamodb';
 import { logger, maskMobile, maskAadhaar } from '../utils/logger';
 
@@ -27,6 +27,7 @@ export interface WorkerRecord {
   districtName: string;
   stateId: string;
   stateName: string;
+  pinCode: string;
   experienceYears: number;
   isAvailable: boolean;
   isApproved: boolean;
@@ -58,6 +59,7 @@ export interface CreateWorkerInput {
   districtName: string;
   stateId: string;
   stateName: string;
+  pinCode: string;
   experienceYears: number;
   bio?: string;
   /** Full Aadhaar for verification only - MUST be hashed immediately, never stored */
@@ -143,19 +145,14 @@ export async function isMobileRegistered(mobile: string): Promise<boolean> {
 
 /**
  * Create a new worker profile
+ * Uses atomic transaction to prevent race conditions on mobile uniqueness
  */
 export async function createWorker(input: CreateWorkerInput): Promise<WorkerRecord> {
-  // Check if mobile is already registered
-  if (await isMobileRegistered(input.mobile)) {
-    throw new DuplicateEntryError('Mobile number already registered');
-  }
-
   // Hash Aadhaar immediately - never store the full number
   const { hash: aadhaarHash, last4: aadhaarLast4 } = hashAadhaar(input.aadhaarNumber);
 
   logger.info('Creating worker profile', {
     mobile: maskMobile(input.mobile),
-    aadhaar: maskAadhaar(input.aadhaarNumber),
     category: input.categoryId,
     town: input.townId,
   });
@@ -181,6 +178,7 @@ export async function createWorker(input: CreateWorkerInput): Promise<WorkerReco
     districtName: input.districtName,
     stateId: input.stateId,
     stateName: input.stateName,
+    pinCode: input.pinCode,
     experienceYears: input.experienceYears,
     isAvailable: true,
     isApproved: false, // Requires admin approval
@@ -197,7 +195,13 @@ export async function createWorker(input: CreateWorkerInput): Promise<WorkerReco
     updatedAt: now,
   };
 
-  await createItem(Tables.WORKERS, worker as unknown as Record<string, unknown>);
+  // Use atomic transaction to create worker and mobile reservation together
+  // This prevents race conditions where two requests for same mobile could both succeed
+  await createWorkerWithMobileUniqueness(
+    Tables.WORKERS,
+    worker as unknown as Record<string, unknown>,
+    input.mobile
+  );
 
   logger.info('Worker profile created', { workerId, mobile: maskMobile(input.mobile) });
 
@@ -295,14 +299,12 @@ export async function searchWorkers(params: WorkerSearchParams): Promise<{
         limit,
         scanIndexForward: false, // Highest rating first
         exclusiveStartKey,
-        ...(isAvailable !== undefined && {
-          filterExpression: 'isAvailable = :avail AND isApproved = :approved',
-          expressionNames: undefined,
-        }),
       }
     );
 
-    // Apply filter manually if needed (DynamoDB filter is post-query)
+    // Apply filter manually - only show approved workers
+    // Note: DynamoDB filter expressions run post-query and don't reduce read capacity,
+    // so manual filtering achieves the same result with simpler code
     let workers = result.items;
     if (isAvailable !== undefined) {
       workers = workers.filter((w) => w.isAvailable === isAvailable && w.isApproved === true);

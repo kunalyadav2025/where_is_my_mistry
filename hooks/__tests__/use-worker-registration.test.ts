@@ -23,6 +23,7 @@ describe('useWorkerRegistration', () => {
     districtName: 'Indore',
     stateId: 'state-1',
     stateName: 'Madhya Pradesh',
+    pinCode: '452001',
     experienceYears: 10,
     bio: 'Experienced plumber',
     aadhaarNumber: '123456789012',

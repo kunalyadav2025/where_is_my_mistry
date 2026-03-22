@@ -43,6 +43,7 @@ export const mockWorker: Worker = {
   tehsilName: 'Indore',
   districtName: 'Indore',
   stateName: 'Madhya Pradesh',
+  pinCode: '452001',
   experienceYears: 10,
   isAvailable: true,
   isApproved: true,

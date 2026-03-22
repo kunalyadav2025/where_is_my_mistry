@@ -11,6 +11,7 @@ export interface Worker {
   tehsilName: string;
   districtName: string;
   stateName: string;
+  pinCode: string;
   experienceYears: number;
   isAvailable: boolean;
   isApproved: boolean;

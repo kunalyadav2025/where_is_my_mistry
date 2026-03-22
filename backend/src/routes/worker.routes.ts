@@ -40,6 +40,7 @@ function validateCreateWorkerInput(body: unknown): { valid: boolean; error?: str
     'districtName',
     'stateId',
     'stateName',
+    'pinCode',
     'aadhaarNumber',
   ];
 
@@ -71,12 +72,10 @@ function validateCreateWorkerInput(body: unknown): { valid: boolean; error?: str
     return { valid: false, error: 'bio must be a string' };
   }
 
-  // Optional pinCode validation (not stored but accepted)
-  if (input.pinCode !== undefined && typeof input.pinCode === 'string') {
-    const pinCode = input.pinCode.trim();
-    if (!/^\d{6}$/.test(pinCode)) {
-      return { valid: false, error: 'pinCode must be 6 digits' };
-    }
+  // Validate pinCode (6 digits)
+  const pinCode = (input.pinCode as string).trim();
+  if (!/^\d{6}$/.test(pinCode)) {
+    return { valid: false, error: 'pinCode must be 6 digits' };
   }
 
   return {
@@ -94,6 +93,7 @@ function validateCreateWorkerInput(body: unknown): { valid: boolean; error?: str
       districtName: (input.districtName as string).trim(),
       stateId: (input.stateId as string).trim(),
       stateName: (input.stateName as string).trim(),
+      pinCode,
       experienceYears: input.experienceYears as number,
       aadhaarNumber: aadhaar,
       bio: input.bio ? (input.bio as string).trim() : undefined,
@@ -118,6 +118,7 @@ function toWorkerResponse(worker: WorkerRecord) {
     tehsilName: worker.tehsilName,
     districtName: worker.districtName,
     stateName: worker.stateName,
+    pinCode: worker.pinCode,
     experienceYears: worker.experienceYears,
     isAvailable: worker.isAvailable,
     isApproved: worker.isApproved,
@@ -164,6 +165,31 @@ router.get('/', async (req: Request, res: Response, next: NextFunction) => {
     });
   } catch (error) {
     logger.error('Error listing workers', error as Error);
+    next(error);
+  }
+});
+
+// GET /api/workers/mobile/:mobile - Get worker by mobile number
+// IMPORTANT: This route MUST be defined BEFORE /:workerId to avoid "mobile" being captured as workerId
+router.get('/mobile/:mobile', async (req: Request, res: Response, next: NextFunction) => {
+  try {
+    const { mobile } = req.params;
+
+    if (!mobile || !/^[6-9]\d{9}$/.test(mobile)) {
+      return errorResponse(res, 'VALIDATION_ERROR', 'Valid 10-digit mobile number is required', 400);
+    }
+
+    const worker = await getWorkerByMobile(mobile);
+
+    if (!worker) {
+      return errorResponse(res, 'NOT_FOUND', 'Worker not found', 404);
+    }
+
+    return successResponse(res, {
+      worker: toWorkerResponse(worker),
+    });
+  } catch (error) {
+    logger.error('Error getting worker by mobile', error as Error);
     next(error);
   }
 });
@@ -330,30 +356,6 @@ router.put('/:workerId', async (req: Request, res: Response, next: NextFunction)
     });
   } catch (error) {
     logger.error('Error updating worker', error as Error);
-    next(error);
-  }
-});
-
-// GET /api/workers/mobile/:mobile - Get worker by mobile number
-router.get('/mobile/:mobile', async (req: Request, res: Response, next: NextFunction) => {
-  try {
-    const { mobile } = req.params;
-
-    if (!mobile || !/^[6-9]\d{9}$/.test(mobile)) {
-      return errorResponse(res, 'VALIDATION_ERROR', 'Valid 10-digit mobile number is required', 400);
-    }
-
-    const worker = await getWorkerByMobile(mobile);
-
-    if (!worker) {
-      return errorResponse(res, 'NOT_FOUND', 'Worker not found', 404);
-    }
-
-    return successResponse(res, {
-      worker: toWorkerResponse(worker),
-    });
-  } catch (error) {
-    logger.error('Error getting worker by mobile', error as Error);
     next(error);
   }
 });
