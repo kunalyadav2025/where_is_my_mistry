@@ -65,8 +65,13 @@ export function useLocationResolver(params: UseLocationResolverParams = {}): Use
       // Step 1: Get all states and find matching state
       const statesResponse = await api.get<StatesResponse>(API_ENDPOINTS.STATES);
 
-      if (!statesResponse.success || !statesResponse.data?.states) {
-        throw new Error('Failed to fetch states');
+      if (!statesResponse.success) {
+        const errorMsg = statesResponse.error?.message || 'Unable to connect to server';
+        throw new Error(errorMsg);
+      }
+
+      if (!statesResponse.data?.states || statesResponse.data.states.length === 0) {
+        throw new Error('Location data not available');
       }
 
       const normalizedStateName = stateName.toLowerCase().trim();

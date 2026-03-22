@@ -9,6 +9,7 @@ import {
   SafeAreaView,
   Linking,
   StatusBar,
+  Platform,
 } from 'react-native';
 import { useRouter } from 'expo-router';
 import * as Location from 'expo-location';
@@ -255,18 +256,31 @@ export default function HomeScreen() {
     }
 
     if (locationError || resolveError) {
+      const errorMessage = locationError || resolveError || 'Unknown error';
+      const isNetworkError = errorMessage.toLowerCase().includes('network') ||
+                             errorMessage.toLowerCase().includes('connect') ||
+                             errorMessage.toLowerCase().includes('server');
+
       return (
         <View style={styles.emptyContainer}>
-          <IconSymbol name="exclamationmark.triangle.fill" size={64} color="#F59E0B" />
-          <Text style={[styles.emptyTitle, { color: colors.text }]}>Location Error</Text>
+          <IconSymbol
+            name={isNetworkError ? "wifi.slash" : "exclamationmark.triangle.fill"}
+            size={64}
+            color="#F59E0B"
+          />
+          <Text style={[styles.emptyTitle, { color: colors.text }]}>
+            {isNetworkError ? 'Connection Error' : 'Location Error'}
+          </Text>
           <Text style={[styles.emptySubtitle, { color: colors.tabIconDefault }]}>
-            {locationError || resolveError}
+            {isNetworkError
+              ? 'Unable to connect to server.\nPlease check your internet connection.'
+              : errorMessage}
           </Text>
           <TouchableOpacity
             style={[styles.enableButton, { backgroundColor: colors.primary }]}
-            onPress={handleRequestPermission}
+            onPress={handleRefresh}
           >
-            <Text style={styles.enableButtonText}>Try Again</Text>
+            <Text style={styles.enableButtonText}>Retry</Text>
           </TouchableOpacity>
         </View>
       );
@@ -382,7 +396,7 @@ const styles = StyleSheet.create({
     flex: 1,
   },
   headerContainer: {
-    paddingTop: 8,
+    paddingTop: Platform.OS === 'android' ? (StatusBar.currentHeight || 24) + 8 : 8,
     borderBottomWidth: 0,
   },
   headerRow: {
