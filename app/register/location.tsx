@@ -1,24 +1,22 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState } from 'react';
 import {
   View,
   Text,
+  TextInput,
   TouchableOpacity,
   StyleSheet,
   ScrollView,
   SafeAreaView,
   ActivityIndicator,
   Alert,
+  Platform,
+  StatusBar,
 } from 'react-native';
 import { useRouter, useLocalSearchParams } from 'expo-router';
-import { useLocations } from '@/hooks/use-locations';
+import { useLocalLocations, StateItem, DistrictItem, CityItem } from '@/hooks/use-local-locations';
 import { Colors } from '@/constants/theme';
 import { useColorScheme } from '@/hooks/use-color-scheme';
 import { IconSymbol } from '@/components/ui/icon-symbol';
-
-interface LocationItem {
-  id: string;
-  name: string;
-}
 
 export default function RegisterLocationScreen() {
   const router = useRouter();
@@ -27,7 +25,6 @@ export default function RegisterLocationScreen() {
     categoryId: string;
     categoryName: string;
     experienceYears: string;
-    mobile: string;
   }>();
   const colorScheme = useColorScheme();
   const colors = Colors[colorScheme ?? 'light'];
@@ -35,52 +32,52 @@ export default function RegisterLocationScreen() {
   const {
     states,
     districts,
-    tehsils,
-    towns,
+    cities,
+    selectedStateId,
+    selectedDistrictId,
+    selectState,
+    selectDistrict,
+    getStateName,
+    getDistrictName,
     isLoading,
-    fetchStates,
-    fetchDistricts,
-    fetchTehsils,
-    fetchTowns,
-  } = useLocations();
+  } = useLocalLocations();
 
-  const [selectedState, setSelectedState] = useState<LocationItem | null>(null);
-  const [selectedDistrict, setSelectedDistrict] = useState<LocationItem | null>(null);
-  const [selectedTehsil, setSelectedTehsil] = useState<LocationItem | null>(null);
-  const [selectedTown, setSelectedTown] = useState<LocationItem | null>(null);
+  const [selectedState, setSelectedState] = useState<StateItem | null>(null);
+  const [selectedDistrict, setSelectedDistrict] = useState<DistrictItem | null>(null);
+  const [selectedCity, setSelectedCity] = useState<CityItem | null>(null);
+  const [pinCode, setPinCode] = useState('');
 
-  useEffect(() => {
-    fetchStates();
-  }, []);
-
-  const handleStateSelect = (state: LocationItem) => {
+  const handleStateSelect = (state: StateItem) => {
     setSelectedState(state);
     setSelectedDistrict(null);
-    setSelectedTehsil(null);
-    setSelectedTown(null);
-    fetchDistricts(state.id);
+    setSelectedCity(null);
+    setPinCode('');
+    selectState(state.id);
   };
 
-  const handleDistrictSelect = (district: LocationItem) => {
+  const handleDistrictSelect = (district: DistrictItem) => {
     setSelectedDistrict(district);
-    setSelectedTehsil(null);
-    setSelectedTown(null);
-    fetchTehsils(district.id);
+    setSelectedCity(null);
+    setPinCode('');
+    selectDistrict(district.id);
   };
 
-  const handleTehsilSelect = (tehsil: LocationItem) => {
-    setSelectedTehsil(tehsil);
-    setSelectedTown(null);
-    fetchTowns(tehsil.id);
+  const handleCitySelect = (city: CityItem) => {
+    setSelectedCity(city);
+    // Auto-fill pincode from selected city
+    setPinCode(city.pincode);
   };
 
-  const handleTownSelect = (town: LocationItem) => {
-    setSelectedTown(town);
-  };
+  const validatePinCode = (pin: string) => /^\d{6}$/.test(pin);
 
   const handleNext = () => {
-    if (!selectedState || !selectedDistrict || !selectedTehsil || !selectedTown) {
-      Alert.alert('Required', 'Please select all location fields');
+    if (!selectedState || !selectedDistrict || !selectedCity) {
+      Alert.alert('Required', 'Please select State, District and City');
+      return;
+    }
+
+    if (!validatePinCode(pinCode)) {
+      Alert.alert('Invalid PIN', 'Please enter a valid 6-digit PIN code');
       return;
     }
 
@@ -92,39 +89,29 @@ export default function RegisterLocationScreen() {
         stateName: selectedState.name,
         districtId: selectedDistrict.id,
         districtName: selectedDistrict.name,
-        tehsilId: selectedTehsil.id,
-        tehsilName: selectedTehsil.name,
-        townId: selectedTown.id,
-        townName: selectedTown.name,
+        // Using city as town for compatibility
+        tehsilId: selectedDistrict.id,
+        tehsilName: selectedDistrict.name,
+        townId: selectedCity.id,
+        townName: selectedCity.name,
+        pinCode,
       },
     });
   };
 
-  const renderLocationSection = (
-    title: string,
-    items: any[],
-    selected: LocationItem | null,
-    onSelect: (item: LocationItem) => void,
-    idKey: string,
-    disabled = false
-  ) => (
-    <View style={[styles.section, disabled && styles.sectionDisabled]}>
-      <Text style={[styles.sectionTitle, { color: colors.text }]}>{title}</Text>
-      {isLoading && !items.length ? (
+  const renderStateSection = () => (
+    <View style={styles.section}>
+      <Text style={[styles.sectionTitle, { color: colors.text }]}>Select State *</Text>
+      {states.length === 0 ? (
         <ActivityIndicator size="small" color={colors.tint} style={styles.loader} />
-      ) : items.length === 0 ? (
-        <Text style={[styles.emptyText, { color: colors.tabIconDefault }]}>
-          {disabled ? `Select ${title.replace('Select ', '').toLowerCase()} first` : 'No options available'}
-        </Text>
       ) : (
         <ScrollView horizontal showsHorizontalScrollIndicator={false} style={styles.chipScroll}>
           <View style={styles.chipContainer}>
-            {items.map((item) => {
-              const id = item[idKey] || item.id;
-              const isSelected = selected?.id === id;
+            {states.map((state) => {
+              const isSelected = selectedState?.id === state.id;
               return (
                 <TouchableOpacity
-                  key={id}
+                  key={state.id}
                   style={[
                     styles.chip,
                     {
@@ -132,7 +119,7 @@ export default function RegisterLocationScreen() {
                       borderColor: isSelected ? colors.tint : colors.tabIconDefault,
                     },
                   ]}
-                  onPress={() => onSelect({ id, name: item.name })}
+                  onPress={() => handleStateSelect(state)}
                 >
                   <Text
                     style={[
@@ -140,7 +127,107 @@ export default function RegisterLocationScreen() {
                       { color: isSelected ? '#fff' : colors.text },
                     ]}
                   >
-                    {item.name}
+                    {state.name}
+                  </Text>
+                  {isSelected && (
+                    <IconSymbol name="checkmark" size={14} color="#fff" />
+                  )}
+                </TouchableOpacity>
+              );
+            })}
+          </View>
+        </ScrollView>
+      )}
+    </View>
+  );
+
+  const renderDistrictSection = () => (
+    <View style={[styles.section, !selectedState && styles.sectionDisabled]}>
+      <Text style={[styles.sectionTitle, { color: colors.text }]}>Select District *</Text>
+      {!selectedState ? (
+        <Text style={[styles.emptyText, { color: colors.tabIconDefault }]}>
+          Select state first
+        </Text>
+      ) : isLoading ? (
+        <ActivityIndicator size="small" color={colors.tint} style={styles.loader} />
+      ) : districts.length === 0 ? (
+        <Text style={[styles.emptyText, { color: colors.tabIconDefault }]}>
+          No districts available
+        </Text>
+      ) : (
+        <ScrollView horizontal showsHorizontalScrollIndicator={false} style={styles.chipScroll}>
+          <View style={styles.chipContainer}>
+            {districts.map((district) => {
+              const isSelected = selectedDistrict?.id === district.id;
+              return (
+                <TouchableOpacity
+                  key={district.id}
+                  style={[
+                    styles.chip,
+                    {
+                      backgroundColor: isSelected ? colors.tint : colors.card,
+                      borderColor: isSelected ? colors.tint : colors.tabIconDefault,
+                    },
+                  ]}
+                  onPress={() => handleDistrictSelect(district)}
+                >
+                  <Text
+                    style={[
+                      styles.chipText,
+                      { color: isSelected ? '#fff' : colors.text },
+                    ]}
+                  >
+                    {district.name}
+                  </Text>
+                  {isSelected && (
+                    <IconSymbol name="checkmark" size={14} color="#fff" />
+                  )}
+                </TouchableOpacity>
+              );
+            })}
+          </View>
+        </ScrollView>
+      )}
+    </View>
+  );
+
+  const renderCitySection = () => (
+    <View style={[styles.section, !selectedDistrict && styles.sectionDisabled]}>
+      <Text style={[styles.sectionTitle, { color: colors.text }]}>Select City/Town *</Text>
+      {!selectedDistrict ? (
+        <Text style={[styles.emptyText, { color: colors.tabIconDefault }]}>
+          Select district first
+        </Text>
+      ) : isLoading ? (
+        <ActivityIndicator size="small" color={colors.tint} style={styles.loader} />
+      ) : cities.length === 0 ? (
+        <Text style={[styles.emptyText, { color: colors.tabIconDefault }]}>
+          No cities available
+        </Text>
+      ) : (
+        <ScrollView horizontal showsHorizontalScrollIndicator={false} style={styles.chipScroll}>
+          <View style={styles.chipContainer}>
+            {cities.map((city) => {
+              const isSelected = selectedCity?.id === city.id;
+              return (
+                <TouchableOpacity
+                  key={city.id}
+                  style={[
+                    styles.chip,
+                    {
+                      backgroundColor: isSelected ? colors.tint : colors.card,
+                      borderColor: isSelected ? colors.tint : colors.tabIconDefault,
+                    },
+                  ]}
+                  onPress={() => handleCitySelect(city)}
+                >
+                  <Text
+                    style={[
+                      styles.chipText,
+                      { color: isSelected ? '#fff' : colors.text },
+                    ]}
+                  >
+                    {city.name}
                   </Text>
                   {isSelected && (
                     <IconSymbol name="checkmark" size={14} color="#fff" />
@@ -176,47 +263,43 @@ export default function RegisterLocationScreen() {
           Step 2: Where do you work?
         </Text>
 
-        {renderLocationSection(
-          'Select State',
-          states,
-          selectedState,
-          handleStateSelect,
-          'stateId'
-        )}
+        {renderStateSection()}
+        {renderDistrictSection()}
+        {renderCitySection()}
 
-        {renderLocationSection(
-          'Select District',
-          districts,
-          selectedDistrict,
-          handleDistrictSelect,
-          'districtId',
-          !selectedState
-        )}
-
-        {renderLocationSection(
-          'Select Tehsil',
-          tehsils,
-          selectedTehsil,
-          handleTehsilSelect,
-          'tehsilId',
-          !selectedDistrict
-        )}
-
-        {renderLocationSection(
-          'Select Town/Village',
-          towns,
-          selectedTown,
-          handleTownSelect,
-          'townId',
-          !selectedTehsil
-        )}
+        {/* PIN Code Input */}
+        <View style={[styles.section, !selectedCity && styles.sectionDisabled]}>
+          <Text style={[styles.sectionTitle, { color: colors.text }]}>PIN Code *</Text>
+          <TextInput
+            style={[
+              styles.pinInput,
+              {
+                color: colors.text,
+                borderColor: colors.tabIconDefault,
+                backgroundColor: colors.card,
+              },
+            ]}
+            placeholder="Enter 6-digit PIN code"
+            placeholderTextColor={colors.tabIconDefault}
+            value={pinCode}
+            onChangeText={(text) => setPinCode(text.replace(/\D/g, '').substring(0, 6))}
+            keyboardType="number-pad"
+            maxLength={6}
+            editable={!!selectedCity}
+          />
+          {selectedCity && (
+            <Text style={[styles.pinHint, { color: colors.tabIconDefault }]}>
+              Auto-filled from selected city. You can change if needed.
+            </Text>
+          )}
+        </View>
 
         {/* Selected Summary */}
-        {selectedTown && (
+        {selectedCity && validatePinCode(pinCode) && (
           <View style={[styles.summaryCard, { backgroundColor: colors.card }]}>
             <IconSymbol name="location.fill" size={20} color={colors.tint} />
             <Text style={[styles.summaryText, { color: colors.text }]}>
-              {selectedTown.name}, {selectedTehsil?.name}, {selectedDistrict?.name}, {selectedState?.name}
+              {selectedCity.name}, {selectedDistrict?.name}, {selectedState?.name} - {pinCode}
             </Text>
           </View>
         )}
@@ -227,12 +310,12 @@ export default function RegisterLocationScreen() {
           style={[
             styles.nextButton,
             { backgroundColor: colors.tint },
-            !selectedTown && styles.buttonDisabled,
+            (!selectedCity || !validatePinCode(pinCode)) && styles.buttonDisabled,
           ]}
           onPress={handleNext}
-          disabled={!selectedTown}
+          disabled={!selectedCity || !validatePinCode(pinCode)}
         >
-          <Text style={styles.nextButtonText}>Next: Final Details</Text>
+          <Text style={styles.nextButtonText}>Next: Verify Mobile</Text>
           <IconSymbol name="chevron.right" size={20} color="#fff" />
         </TouchableOpacity>
       </View>
@@ -250,6 +333,7 @@ const styles = StyleSheet.create({
     justifyContent: 'space-between',
     paddingHorizontal: 20,
     paddingVertical: 16,
+    paddingTop: Platform.OS === 'android' ? (StatusBar.currentHeight || 24) + 16 : 16,
   },
   backButton: {
     flexDirection: 'row',
@@ -306,6 +390,7 @@ const styles = StyleSheet.create({
   },
   chipContainer: {
     flexDirection: 'row',
+    flexWrap: 'wrap',
     gap: 10,
     paddingRight: 20,
   },
@@ -328,6 +413,17 @@ const styles = StyleSheet.create({
   emptyText: {
     fontSize: 14,
     fontStyle: 'italic',
+  },
+  pinInput: {
+    height: 48,
+    borderWidth: 1,
+    borderRadius: 8,
+    paddingHorizontal: 16,
+    fontSize: 16,
+  },
+  pinHint: {
+    fontSize: 12,
+    marginTop: 6,
   },
   summaryCard: {
     flexDirection: 'row',

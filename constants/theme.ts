@@ -5,27 +5,39 @@
 
 import { Platform } from 'react-native';
 
-const tintColorLight = '#0a7ea4';
+// Primary teal color for the app
+const primaryColor = '#1D9E75';
+const tintColorLight = primaryColor;
 const tintColorDark = '#fff';
 
 export const Colors = {
   light: {
     text: '#11181C',
-    background: '#fff',
-    card: '#f8f9fa',
+    background: '#F8F9FA',
+    card: '#FFFFFF',
     tint: tintColorLight,
+    primary: primaryColor,
     icon: '#687076',
     tabIconDefault: '#687076',
     tabIconSelected: tintColorLight,
+    border: '#E5E7EB',
+    available: '#22C55E',
+    busy: '#9CA3AF',
+    verified: '#3B82F6',
   },
   dark: {
     text: '#ECEDEE',
     background: '#151718',
     card: '#1e2022',
     tint: tintColorDark,
+    primary: primaryColor,
     icon: '#9BA1A6',
     tabIconDefault: '#9BA1A6',
     tabIconSelected: tintColorDark,
+    border: '#374151',
+    available: '#22C55E',
+    busy: '#6B7280',
+    verified: '#60A5FA',
   },
 };
 

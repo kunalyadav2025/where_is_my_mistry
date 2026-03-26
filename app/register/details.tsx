@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import {
   View,
   Text,
@@ -9,9 +9,12 @@ import {
   SafeAreaView,
   ActivityIndicator,
   Alert,
+  Platform,
+  StatusBar,
 } from 'react-native';
 import { useRouter, useLocalSearchParams } from 'expo-router';
 import { useWorkerRegistration } from '@/hooks/use-worker-registration';
+import { useAuthApi } from '@/hooks/use-auth-api';
 import { Colors } from '@/constants/theme';
 import { useColorScheme } from '@/hooks/use-color-scheme';
 import { IconSymbol } from '@/components/ui/icon-symbol';
@@ -20,7 +23,6 @@ export default function RegisterDetailsScreen() {
   const router = useRouter();
   const params = useLocalSearchParams<{
     name: string;
-    mobile: string;
     categoryId: string;
     categoryName: string;
     experienceYears: string;
@@ -32,15 +34,78 @@ export default function RegisterDetailsScreen() {
     tehsilName: string;
     townId: string;
     townName: string;
+    pinCode: string;
   }>();
   const colorScheme = useColorScheme();
   const colors = Colors[colorScheme ?? 'light'];
 
   const { registerWorker, isLoading, error } = useWorkerRegistration();
+  const { sendOtp, verifyOtp, isLoading: isOtpLoading, error: otpError, clearError } = useAuthApi();
+
+  // Mobile verification state
+  const [mobile, setMobile] = useState('');
+  const [otp, setOtp] = useState('');
+  const [isOtpSent, setIsOtpSent] = useState(false);
+  const [isMobileVerified, setIsMobileVerified] = useState(false);
+  const [resendTimer, setResendTimer] = useState(0);
+  const timerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
   const [aadhaar, setAadhaar] = useState('');
   const [bio, setBio] = useState('');
   const [agreedToTerms, setAgreedToTerms] = useState(false);
+
+  // Resend timer countdown
+  useEffect(() => {
+    if (resendTimer > 0) {
+      timerRef.current = setTimeout(() => setResendTimer(resendTimer - 1), 1000);
+    }
+    return () => {
+      if (timerRef.current) clearTimeout(timerRef.current);
+    };
+  }, [resendTimer]);
+
+  const validateMobile = (num: string) => /^[6-9]\d{9}$/.test(num);
+
+  const handleSendOtp = async () => {
+    if (!validateMobile(mobile)) {
+      Alert.alert('Invalid Mobile', 'Please enter a valid 10-digit mobile number');
+      return;
+    }
+
+    clearError();
+    const result = await sendOtp(mobile);
+    if (result) {
+      setIsOtpSent(true);
+      setResendTimer(30);
+      Alert.alert('OTP Sent', `OTP sent to +91 ${mobile}`);
+    }
+  };
+
+  const handleVerifyOtp = async () => {
+    if (otp.length !== 6) {
+      Alert.alert('Invalid OTP', 'Please enter the 6-digit OTP');
+      return;
+    }
+
+    clearError();
+    const result = await verifyOtp(mobile, otp);
+    if (result) {
+      setIsMobileVerified(true);
+      setOtp(''); // Clear OTP from memory after successful verification
+      Alert.alert('Verified', 'Mobile number verified successfully!');
+    }
+  };
+
+  const handleResendOtp = async () => {
+    if (resendTimer > 0) return;
+    clearError();
+    const result = await sendOtp(mobile);
+    if (result) {
+      setResendTimer(30);
+      setOtp('');
+      Alert.alert('OTP Resent', `New OTP sent to +91 ${mobile}`);
+    }
+  };
 
   const formatAadhaar = (text: string) => {
     const cleaned = text.replace(/\D/g, '');
@@ -58,6 +123,11 @@ export default function RegisterDetailsScreen() {
   };
 
   const handleSubmit = async () => {
+    if (!isMobileVerified) {
+      Alert.alert('Mobile Required', 'Please verify your mobile number');
+      return;
+    }
+
     const cleanedAadhaar = aadhaar.replace(/\s/g, '');
 
     if (!validateAadhaar(aadhaar)) {
@@ -72,7 +142,7 @@ export default function RegisterDetailsScreen() {
 
     const result = await registerWorker({
       name: params.name,
-      mobile: params.mobile,
+      mobile: mobile,
       categoryId: params.categoryId,
       categoryName: params.categoryName,
       experienceYears: parseInt(params.experienceYears, 10),
@@ -84,6 +154,7 @@ export default function RegisterDetailsScreen() {
       tehsilName: params.tehsilName,
       townId: params.townId,
       townName: params.townName,
+      pinCode: params.pinCode,
       aadhaarNumber: cleanedAadhaar,
       bio: bio.trim() || undefined,
     });
@@ -126,10 +197,6 @@ export default function RegisterDetailsScreen() {
             <Text style={[styles.summaryValue, { color: colors.text }]}>{params.name}</Text>
           </View>
           <View style={styles.summaryRow}>
-            <Text style={[styles.summaryLabel, { color: colors.tabIconDefault }]}>Mobile:</Text>
-            <Text style={[styles.summaryValue, { color: colors.text }]}>+91 {params.mobile}</Text>
-          </View>
-          <View style={styles.summaryRow}>
             <Text style={[styles.summaryLabel, { color: colors.tabIconDefault }]}>Category:</Text>
             <Text style={[styles.summaryValue, { color: colors.text }]}>{params.categoryName}</Text>
           </View>
@@ -140,9 +207,134 @@ export default function RegisterDetailsScreen() {
           <View style={styles.summaryRow}>
             <Text style={[styles.summaryLabel, { color: colors.tabIconDefault }]}>Location:</Text>
             <Text style={[styles.summaryValue, { color: colors.text }]}>
-              {params.townName}, {params.districtName}
+              {params.townName}, {params.districtName} - {params.pinCode}
             </Text>
           </View>
+        </View>
+
+        {/* Mobile Number Input */}
+        <View style={styles.inputGroup}>
+          <Text style={[styles.label, { color: colors.text }]}>Mobile Number *</Text>
+          <Text style={[styles.helperText, { color: colors.tabIconDefault }]}>
+            Enter your mobile number for verification
+          </Text>
+
+          {!isMobileVerified ? (
+            <>
+              <View style={styles.mobileInputRow}>
+                <View style={[styles.countryCode, { borderColor: colors.tabIconDefault, backgroundColor: colors.card }]}>
+                  <Text style={[styles.countryCodeText, { color: colors.text }]}>+91</Text>
+                </View>
+                <TextInput
+                  style={[
+                    styles.mobileInput,
+                    { color: colors.text, borderColor: colors.tabIconDefault },
+                    isOtpSent && styles.inputDisabled,
+                  ]}
+                  placeholder="Enter 10-digit mobile"
+                  placeholderTextColor={colors.tabIconDefault}
+                  value={mobile}
+                  onChangeText={(text) => setMobile(text.replace(/\D/g, '').substring(0, 10))}
+                  keyboardType="phone-pad"
+                  maxLength={10}
+                  editable={!isOtpSent}
+                />
+                {!isOtpSent && (
+                  <TouchableOpacity
+                    style={[
+                      styles.sendOtpButton,
+                      { backgroundColor: colors.tint },
+                      (!validateMobile(mobile) || isOtpLoading) && styles.buttonDisabled,
+                    ]}
+                    onPress={handleSendOtp}
+                    disabled={!validateMobile(mobile) || isOtpLoading}
+                  >
+                    {isOtpLoading ? (
+                      <ActivityIndicator size="small" color="#fff" />
+                    ) : (
+                      <Text style={styles.sendOtpText}>Send OTP</Text>
+                    )}
+                  </TouchableOpacity>
+                )}
+              </View>
+
+              {isOtpSent && (
+                <>
+                  <View style={styles.otpSection}>
+                    <TextInput
+                      style={[styles.otpInput, { color: colors.text, borderColor: colors.tabIconDefault }]}
+                      placeholder="Enter 6-digit OTP"
+                      placeholderTextColor={colors.tabIconDefault}
+                      value={otp}
+                      onChangeText={(text) => setOtp(text.replace(/\D/g, '').substring(0, 6))}
+                      keyboardType="number-pad"
+                      maxLength={6}
+                    />
+                    <TouchableOpacity
+                      style={[
+                        styles.verifyButton,
+                        { backgroundColor: colors.tint },
+                        (otp.length !== 6 || isOtpLoading) && styles.buttonDisabled,
+                      ]}
+                      onPress={handleVerifyOtp}
+                      disabled={otp.length !== 6 || isOtpLoading}
+                    >
+                      {isOtpLoading ? (
+                        <ActivityIndicator size="small" color="#fff" />
+                      ) : (
+                        <Text style={styles.verifyButtonText}>Verify</Text>
+                      )}
+                    </TouchableOpacity>
+                  </View>
+
+                  <View style={styles.resendRow}>
+                    <TouchableOpacity
+                      onPress={handleResendOtp}
+                      disabled={resendTimer > 0}
+                    >
+                      <Text style={[styles.resendText, { color: resendTimer > 0 ? colors.tabIconDefault : colors.tint }]}>
+                        {resendTimer > 0 ? `Resend OTP in ${resendTimer}s` : 'Resend OTP'}
+                      </Text>
+                    </TouchableOpacity>
+                    <TouchableOpacity onPress={() => { setIsOtpSent(false); setOtp(''); clearError(); }}>
+                      <Text style={[styles.changeNumberText, { color: colors.tint }]}>Change Number</Text>
+                    </TouchableOpacity>
+                  </View>
+                </>
+              )}
+
+              {otpError && (
+                <View style={styles.otpErrorContainer}>
+                  <IconSymbol name="exclamationmark.circle.fill" size={14} color="#ef4444" />
+                  <Text style={styles.otpErrorText}>{otpError}</Text>
+                </View>
+              )}
+            </>
+          ) : (
+            <View>
+              <View style={[styles.verifiedContainer, { backgroundColor: colors.card, borderColor: '#22c55e' }]}>
+                <Text style={[styles.verifiedMobile, { color: colors.text }]}>+91 {mobile}</Text>
+                <View style={styles.verifiedBadge}>
+                  <IconSymbol name="checkmark.circle.fill" size={18} color="#22c55e" />
+                  <Text style={styles.verifiedBadgeText}>Verified</Text>
+                </View>
+              </View>
+              <TouchableOpacity
+                onPress={() => {
+                  setIsMobileVerified(false);
+                  setIsOtpSent(false);
+                  setMobile('');
+                  setOtp('');
+                  clearError();
+                }}
+                style={styles.changeVerifiedNumber}
+                accessibilityLabel="Change mobile number"
+                accessibilityHint="Reset mobile verification and enter a different number"
+              >
+                <Text style={[styles.changeNumberText, { color: colors.tint }]}>Use Different Number</Text>
+              </TouchableOpacity>
+            </View>
+          )}
         </View>
 
         {/* Aadhaar Input */}
@@ -198,6 +390,10 @@ export default function RegisterDetailsScreen() {
         <TouchableOpacity
           style={styles.termsRow}
           onPress={() => setAgreedToTerms(!agreedToTerms)}
+          accessibilityLabel="Terms and conditions agreement"
+          accessibilityRole="checkbox"
+          accessibilityState={{ checked: agreedToTerms }}
+          accessibilityHint="Tap to agree to terms of service and privacy policy"
         >
           <View
             style={[
@@ -230,10 +426,10 @@ export default function RegisterDetailsScreen() {
           style={[
             styles.submitButton,
             { backgroundColor: colors.tint },
-            (isLoading || !validateAadhaar(aadhaar) || !agreedToTerms) && styles.buttonDisabled,
+            (isLoading || !isMobileVerified || !validateAadhaar(aadhaar) || !agreedToTerms) && styles.buttonDisabled,
           ]}
           onPress={handleSubmit}
-          disabled={isLoading || !validateAadhaar(aadhaar) || !agreedToTerms}
+          disabled={isLoading || !isMobileVerified || !validateAadhaar(aadhaar) || !agreedToTerms}
         >
           {isLoading ? (
             <ActivityIndicator color="#fff" />
@@ -259,6 +455,7 @@ const styles = StyleSheet.create({
     justifyContent: 'space-between',
     paddingHorizontal: 20,
     paddingVertical: 16,
+    paddingTop: Platform.OS === 'android' ? (StatusBar.currentHeight || 24) + 16 : 16,
   },
   backButton: {
     flexDirection: 'row',
@@ -411,5 +608,123 @@ const styles = StyleSheet.create({
     color: '#fff',
     fontSize: 16,
     fontWeight: '600',
+  },
+  // Mobile verification styles
+  mobileInputRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 8,
+  },
+  countryCode: {
+    height: 48,
+    paddingHorizontal: 12,
+    borderWidth: 1,
+    borderRadius: 8,
+    justifyContent: 'center',
+  },
+  countryCodeText: {
+    fontSize: 16,
+    fontWeight: '500',
+  },
+  mobileInput: {
+    flex: 1,
+    height: 48,
+    borderWidth: 1,
+    borderRadius: 8,
+    paddingHorizontal: 16,
+    fontSize: 16,
+  },
+  inputDisabled: {
+    opacity: 0.6,
+  },
+  sendOtpButton: {
+    height: 48,
+    paddingHorizontal: 16,
+    borderRadius: 8,
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  sendOtpText: {
+    color: '#fff',
+    fontSize: 14,
+    fontWeight: '600',
+  },
+  otpSection: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 8,
+    marginTop: 12,
+  },
+  otpInput: {
+    flex: 1,
+    height: 48,
+    borderWidth: 1,
+    borderRadius: 8,
+    paddingHorizontal: 16,
+    fontSize: 18,
+    letterSpacing: 4,
+    textAlign: 'center',
+  },
+  verifyButton: {
+    height: 48,
+    paddingHorizontal: 20,
+    borderRadius: 8,
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  verifyButtonText: {
+    color: '#fff',
+    fontSize: 14,
+    fontWeight: '600',
+  },
+  resendRow: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    marginTop: 12,
+  },
+  resendText: {
+    fontSize: 14,
+    fontWeight: '500',
+  },
+  changeNumberText: {
+    fontSize: 14,
+    fontWeight: '500',
+  },
+  otpErrorContainer: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 6,
+    marginTop: 8,
+  },
+  otpErrorText: {
+    color: '#ef4444',
+    fontSize: 13,
+  },
+  verifiedContainer: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    padding: 16,
+    borderWidth: 1,
+    borderRadius: 8,
+  },
+  verifiedMobile: {
+    fontSize: 16,
+    fontWeight: '500',
+  },
+  verifiedBadge: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 6,
+  },
+  verifiedBadgeText: {
+    color: '#22c55e',
+    fontSize: 14,
+    fontWeight: '600',
+  },
+  changeVerifiedNumber: {
+    alignSelf: 'center',
+    marginTop: 12,
+    paddingVertical: 8,
   },
 });

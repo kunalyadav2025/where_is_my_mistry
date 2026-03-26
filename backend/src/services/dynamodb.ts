@@ -1,5 +1,5 @@
 import { DynamoDBClient } from '@aws-sdk/client-dynamodb';
-import { DynamoDBDocumentClient, GetCommand, PutCommand, QueryCommand, UpdateCommand, DeleteCommand, BatchWriteCommand } from '@aws-sdk/lib-dynamodb';
+import { DynamoDBDocumentClient, GetCommand, PutCommand, QueryCommand, UpdateCommand, DeleteCommand, BatchWriteCommand, TransactWriteCommand } from '@aws-sdk/lib-dynamodb';
 import { logger } from '../utils/logger';
 
 const isOffline = process.env.IS_OFFLINE === 'true';
@@ -266,4 +266,49 @@ export async function batchWrite(
   }
 }
 
-export { GetCommand, PutCommand, QueryCommand, UpdateCommand, DeleteCommand, BatchWriteCommand };
+/**
+ * Atomically create a worker with mobile uniqueness constraint
+ * Uses DynamoDB transactions to prevent race conditions
+ */
+export async function createWorkerWithMobileUniqueness(
+  tableName: string,
+  workerItem: Record<string, unknown>,
+  mobile: string
+): Promise<void> {
+  try {
+    await dynamodb.send(
+      new TransactWriteCommand({
+        TransactItems: [
+          // Create mobile reservation record - fails if mobile already exists
+          {
+            Put: {
+              TableName: tableName,
+              Item: {
+                pk: `MOBILE#${mobile}`,
+                sk: 'RESERVATION',
+                workerId: workerItem.workerId,
+                createdAt: workerItem.createdAt,
+              },
+              ConditionExpression: 'attribute_not_exists(pk)',
+            },
+          },
+          // Create the worker record
+          {
+            Put: {
+              TableName: tableName,
+              Item: workerItem,
+              ConditionExpression: 'attribute_not_exists(pk)',
+            },
+          },
+        ],
+      })
+    );
+  } catch (error: unknown) {
+    if (error && typeof error === 'object' && 'name' in error && error.name === 'TransactionCanceledException') {
+      throw new DuplicateEntryError('Mobile number already registered');
+    }
+    throw error;
+  }
+}
+
+export { GetCommand, PutCommand, QueryCommand, UpdateCommand, DeleteCommand, BatchWriteCommand, TransactWriteCommand };

@@ -11,13 +11,14 @@ export interface Worker {
   tehsilName: string;
   districtName: string;
   stateName: string;
+  pinCode: string;
   experienceYears: number;
   isAvailable: boolean;
   isApproved: boolean;
   isRejected: boolean;
   rejectionReason?: string;
-  aadhaarHash: string;
-  aadhaarLast4: string;
+  aadhaarHash?: string;
+  aadhaarLast4?: string;
   viewCount: number;
   avgRating: number;
   reviewCount: number;
@@ -38,7 +39,16 @@ export interface WorkerCreateInput {
   name: string;
   mobile: string;
   categoryId: string;
+  categoryName: string;
   townId: string;
+  townName: string;
+  tehsilId: string;
+  tehsilName: string;
+  districtId: string;
+  districtName: string;
+  stateId: string;
+  stateName: string;
+  pinCode: string;
   experienceYears: number;
   bio?: string;
   /**
@@ -54,7 +64,7 @@ export interface WorkerCreateInput {
    * Format: 12 digits (spaces allowed, will be stripped)
    * Example: "1234 5678 9012" or "123456789012"
    */
-  aadhaarNumber: string;
+  aadhaarNumber?: string;
 }
 
 export interface WorkerUpdateInput {
