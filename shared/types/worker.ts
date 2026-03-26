@@ -17,8 +17,8 @@ export interface Worker {
   isApproved: boolean;
   isRejected: boolean;
   rejectionReason?: string;
-  aadhaarHash: string;
-  aadhaarLast4: string;
+  aadhaarHash?: string;
+  aadhaarLast4?: string;
   viewCount: number;
   avgRating: number;
   reviewCount: number;
@@ -64,7 +64,7 @@ export interface WorkerCreateInput {
    * Format: 12 digits (spaces allowed, will be stripped)
    * Example: "1234 5678 9012" or "123456789012"
    */
-  aadhaarNumber: string;
+  aadhaarNumber?: string;
 }
 
 export interface WorkerUpdateInput {

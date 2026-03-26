@@ -41,7 +41,6 @@ function validateCreateWorkerInput(body: unknown): { valid: boolean; error?: str
     'stateId',
     'stateName',
     'pinCode',
-    'aadhaarNumber',
   ];
 
   for (const field of requiredFields) {
@@ -56,10 +55,13 @@ function validateCreateWorkerInput(body: unknown): { valid: boolean; error?: str
     return { valid: false, error: 'Mobile number must be 10 digits starting with 6-9' };
   }
 
-  // Validate Aadhaar (12 digits, spaces allowed)
-  const aadhaar = (input.aadhaarNumber as string).replace(/\s/g, '');
-  if (!/^\d{12}$/.test(aadhaar)) {
-    return { valid: false, error: 'Aadhaar number must be 12 digits' };
+  // Validate Aadhaar if provided (12 digits, spaces allowed)
+  let aadhaar: string | undefined;
+  if (input.aadhaarNumber && typeof input.aadhaarNumber === 'string' && input.aadhaarNumber.trim() !== '') {
+    aadhaar = (input.aadhaarNumber as string).replace(/\s/g, '');
+    if (!/^\d{12}$/.test(aadhaar)) {
+      return { valid: false, error: 'Aadhaar number must be 12 digits' };
+    }
   }
 
   // Validate experience years
@@ -97,7 +99,7 @@ function validateCreateWorkerInput(body: unknown): { valid: boolean; error?: str
       experienceYears: input.experienceYears as number,
       aadhaarNumber: aadhaar,
       bio: input.bio ? (input.bio as string).trim() : undefined,
-    },
+    } as CreateWorkerInput,
   };
 }
 
