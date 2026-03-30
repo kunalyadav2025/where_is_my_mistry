@@ -23,10 +23,15 @@ interface UseLocationResult {
   requestPermission: () => Promise<boolean>;
 }
 
+// Module-level cache to persist location across component remounts
+let cachedLocation: LocationData | null = null;
+let cachedGeocoded: ReverseGeocodedLocation | null = null;
+let hasFetchedOnce = false;
+
 export function useLocation(): UseLocationResult {
-  const [location, setLocation] = useState<LocationData | null>(null);
-  const [geocoded, setGeocoded] = useState<ReverseGeocodedLocation | null>(null);
-  const [isLoading, setIsLoading] = useState(true);
+  const [location, setLocation] = useState<LocationData | null>(cachedLocation);
+  const [geocoded, setGeocoded] = useState<ReverseGeocodedLocation | null>(cachedGeocoded);
+  const [isLoading, setIsLoading] = useState(!hasFetchedOnce);
   const [error, setError] = useState<string | null>(null);
   const [permissionStatus, setPermissionStatus] = useState<Location.PermissionStatus | null>(null);
 
@@ -86,10 +91,13 @@ export function useLocation(): UseLocationResult {
         longitude: position.coords.longitude,
       };
       setLocation(locationData);
+      cachedLocation = locationData;
 
       // Reverse geocode to get address
       const geocodedResult = await reverseGeocode(locationData.latitude, locationData.longitude);
       setGeocoded(geocodedResult);
+      cachedGeocoded = geocodedResult;
+      hasFetchedOnce = true;
     } catch (err) {
       console.error('Location error:', err);
       setError('Failed to get location');
@@ -122,7 +130,10 @@ export function useLocation(): UseLocationResult {
   }, [fetchLocation]);
 
   useEffect(() => {
-    fetchLocation();
+    // Only fetch location if we haven't fetched before in this session
+    if (!hasFetchedOnce) {
+      fetchLocation();
+    }
   }, [fetchLocation]);
 
   return {

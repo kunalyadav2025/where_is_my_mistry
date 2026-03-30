@@ -5,8 +5,8 @@
 
 import { Platform } from 'react-native';
 
-// Primary teal color for the app
-const primaryColor = '#1D9E75';
+// Primary blue color for the app
+const primaryColor = '#3B82F6';
 const tintColorLight = primaryColor;
 const tintColorDark = '#fff';
 
