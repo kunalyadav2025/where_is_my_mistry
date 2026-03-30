@@ -16,7 +16,6 @@ import * as Location from 'expo-location';
 import { useLocation } from '@/hooks/use-location';
 import { useLocationResolver } from '@/hooks/use-location-resolver';
 import { useNearbyWorkers } from '@/hooks/use-workers';
-import { useAuth } from '@/contexts/AuthContext';
 import { CategoryFilterChips } from '@/components/CategoryFilterChips';
 import { WorkerListSkeleton } from '@/components/SkeletonLoader';
 import { Colors } from '@/constants/theme';
@@ -42,7 +41,6 @@ export default function HomeScreen() {
   const router = useRouter();
   const colorScheme = useColorScheme();
   const colors = Colors[colorScheme ?? 'light'];
-  const { isAuthenticated } = useAuth();
 
   const [selectedCategory, setSelectedCategory] = useState('all');
   const [isRefreshing, setIsRefreshing] = useState(false);
@@ -86,22 +84,10 @@ export default function HomeScreen() {
     setIsRefreshing(false);
   }, [refreshLocation, refreshWorkers]);
 
-  const handleRegisterPress = () => {
-    if (!isAuthenticated) {
-      router.push('/(auth)/login' as any);
-    } else {
-      router.push('/register' as any);
-    }
-  };
-
   const handleWorkerPress = (worker: Worker) => {
     router.push({
-      pathname: '/(tabs)/explore',
-      params: {
-        workerId: worker.workerId,
-        categoryId: worker.categoryId,
-        categoryName: worker.categoryName,
-      },
+      pathname: '/worker/[id]',
+      params: { id: worker.workerId },
     });
   };
 
@@ -214,7 +200,7 @@ export default function HomeScreen() {
       {/* Card Footer - CTA Buttons */}
       <View style={styles.cardFooter}>
         <TouchableOpacity
-          style={[styles.ctaButton, styles.callButton, { backgroundColor: colors.available }]}
+          style={[styles.ctaButton, styles.callButton, { backgroundColor: colors.primary }]}
           onPress={() => handleCallPress(worker.mobile)}
           activeOpacity={0.8}
         >
@@ -223,12 +209,12 @@ export default function HomeScreen() {
         </TouchableOpacity>
 
         <TouchableOpacity
-          style={[styles.ctaButton, styles.whatsappButton, { borderColor: colors.available }]}
+          style={[styles.ctaButton, styles.whatsappButton, { borderColor: colors.primary }]}
           onPress={() => handleWhatsAppPress(worker.mobile)}
           activeOpacity={0.8}
         >
-          <IconSymbol name="message.fill" size={16} color={colors.available} />
-          <Text style={[styles.whatsappButtonText, { color: colors.available }]}>WhatsApp</Text>
+          <IconSymbol name="message.fill" size={16} color={colors.primary} />
+          <Text style={[styles.whatsappButtonText, { color: colors.primary }]}>WhatsApp</Text>
         </TouchableOpacity>
       </View>
     </TouchableOpacity>
@@ -343,17 +329,6 @@ export default function HomeScreen() {
               </Text>
             </View>
           </View>
-
-          {/* Register Button */}
-          <TouchableOpacity
-            style={[styles.registerButton, { borderColor: colors.primary }]}
-            onPress={handleRegisterPress}
-            activeOpacity={0.7}
-          >
-            <Text style={[styles.registerButtonText, { color: colors.primary }]}>
-              Register as Mistry
-            </Text>
-          </TouchableOpacity>
         </View>
 
         {/* Category Filter Chips */}
@@ -410,28 +385,18 @@ const styles = StyleSheet.create({
     flex: 1,
   },
   brandName: {
-    fontSize: 26,
+    fontSize: 20,
     fontWeight: '700',
-    letterSpacing: 0.5,
+    letterSpacing: 0.3,
   },
   locationRow: {
     flexDirection: 'row',
     alignItems: 'center',
     gap: 4,
-    marginTop: 4,
+    marginTop: 2,
   },
   locationLabel: {
-    fontSize: 14,
-  },
-  registerButton: {
-    paddingHorizontal: 14,
-    paddingVertical: 10,
-    borderRadius: 20,
-    borderWidth: 1.5,
-  },
-  registerButtonText: {
     fontSize: 13,
-    fontWeight: '600',
   },
   listContent: {
     padding: 16,

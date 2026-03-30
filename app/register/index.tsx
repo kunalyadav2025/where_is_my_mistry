@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import {
   View,
   Text,
@@ -11,6 +11,8 @@ import {
   Alert,
   Platform,
   StatusBar,
+  KeyboardAvoidingView,
+  BackHandler,
 } from 'react-native';
 import { useRouter } from 'expo-router';
 import { useCategories } from '@/hooks/use-categories';
@@ -26,7 +28,20 @@ export default function RegisterStep1Screen() {
 
   const [name, setName] = useState('');
   const [selectedCategory, setSelectedCategory] = useState<string | null>(null);
+  const [customSkill, setCustomSkill] = useState('');
   const [experienceYears, setExperienceYears] = useState('');
+
+  const isOtherSelected = selectedCategory === 'other';
+
+  // Handle hardware back button on Android
+  useEffect(() => {
+    const backHandler = BackHandler.addEventListener('hardwareBackPress', () => {
+      router.replace('/(tabs)');
+      return true;
+    });
+
+    return () => backHandler.remove();
+  }, [router]);
 
   const handleNext = () => {
     if (!name.trim()) {
@@ -37,6 +52,10 @@ export default function RegisterStep1Screen() {
       Alert.alert('Required', 'Please select your work category');
       return;
     }
+    if (isOtherSelected && !customSkill.trim()) {
+      Alert.alert('Required', 'Please enter your skill name');
+      return;
+    }
     const years = parseInt(experienceYears, 10);
     if (isNaN(years) || years < 0 || years > 50) {
       Alert.alert('Invalid Experience', 'Please enter experience between 0-50 years');
@@ -44,13 +63,14 @@ export default function RegisterStep1Screen() {
     }
 
     const category = categories.find((c) => c.categoryId === selectedCategory);
+    const categoryName = isOtherSelected ? customSkill.trim() : (category?.name || '');
 
     router.push({
       pathname: '/register/location' as any,
       params: {
         name: name.trim(),
         categoryId: selectedCategory,
-        categoryName: category?.name || '',
+        categoryName: categoryName,
         experienceYears,
       },
     });
@@ -66,21 +86,30 @@ export default function RegisterStep1Screen() {
 
   return (
     <SafeAreaView style={[styles.container, { backgroundColor: colors.background }]}>
-      <View style={styles.header}>
-        <TouchableOpacity style={styles.backButton} onPress={() => router.back()}>
-          <IconSymbol name="chevron.left" size={20} color={colors.tint} />
-          <Text style={[styles.backText, { color: colors.tint }]}>Back</Text>
-        </TouchableOpacity>
-        <View style={styles.stepIndicator}>
-          <View style={[styles.stepDot, styles.stepActive, { backgroundColor: colors.tint }]} />
-          <View style={[styles.stepLine, { backgroundColor: colors.tabIconDefault }]} />
-          <View style={[styles.stepDot, { backgroundColor: colors.tabIconDefault }]} />
-          <View style={[styles.stepLine, { backgroundColor: colors.tabIconDefault }]} />
-          <View style={[styles.stepDot, { backgroundColor: colors.tabIconDefault }]} />
+      <KeyboardAvoidingView
+        style={styles.keyboardAvoid}
+        behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
+        keyboardVerticalOffset={Platform.OS === 'ios' ? 0 : 20}
+      >
+        <View style={styles.header}>
+          <TouchableOpacity style={styles.backButton} onPress={() => router.replace('/(tabs)')}>
+            <IconSymbol name="chevron.left" size={20} color={colors.tint} />
+            <Text style={[styles.backText, { color: colors.tint }]}>Back</Text>
+          </TouchableOpacity>
+          <View style={styles.stepIndicator}>
+            <View style={[styles.stepDot, styles.stepActive, { backgroundColor: colors.tint }]} />
+            <View style={[styles.stepLine, { backgroundColor: colors.tabIconDefault }]} />
+            <View style={[styles.stepDot, { backgroundColor: colors.tabIconDefault }]} />
+            <View style={[styles.stepLine, { backgroundColor: colors.tabIconDefault }]} />
+            <View style={[styles.stepDot, { backgroundColor: colors.tabIconDefault }]} />
+          </View>
         </View>
-      </View>
 
-      <ScrollView style={styles.scrollView} contentContainerStyle={styles.content}>
+        <ScrollView
+          style={styles.scrollView}
+          contentContainerStyle={styles.content}
+          keyboardShouldPersistTaps="handled"
+        >
         <Text style={[styles.title, { color: colors.text }]}>Register as a Mistry</Text>
         <Text style={[styles.subtitle, { color: colors.tabIconDefault }]}>
           Step 1: Basic Information
@@ -117,7 +146,12 @@ export default function RegisterStep1Screen() {
                       selectedCategory === category.categoryId ? colors.tint : colors.tabIconDefault,
                   },
                 ]}
-                onPress={() => setSelectedCategory(category.categoryId)}
+                onPress={() => {
+                  setSelectedCategory(category.categoryId);
+                  if (category.categoryId !== 'other') {
+                    setCustomSkill('');
+                  }
+                }}
                 accessibilityLabel={`${category.name} category`}
                 accessibilityRole="button"
                 accessibilityState={{ selected: selectedCategory === category.categoryId }}
@@ -137,6 +171,23 @@ export default function RegisterStep1Screen() {
           </View>
         </View>
 
+        {/* Custom Skill Input - shown only when "Other" is selected */}
+        {isOtherSelected && (
+          <View style={styles.inputGroup}>
+            <Text style={[styles.label, { color: colors.text }]}>Enter Your Skill *</Text>
+            <TextInput
+              style={[styles.input, { color: colors.text, borderColor: colors.tabIconDefault }]}
+              placeholder="e.g., Gardener, Driver, Cook"
+              placeholderTextColor={colors.tabIconDefault}
+              value={customSkill}
+              onChangeText={setCustomSkill}
+              autoCapitalize="words"
+              accessibilityLabel="Custom skill input"
+              accessibilityHint="Enter the name of your skill or profession"
+            />
+          </View>
+        )}
+
         {/* Experience */}
         <View style={styles.inputGroup}>
           <Text style={[styles.label, { color: colors.text }]}>Years of Experience *</Text>
@@ -152,26 +203,30 @@ export default function RegisterStep1Screen() {
             accessibilityHint="Enter number of years between 0 and 50"
           />
         </View>
-      </ScrollView>
+        </ScrollView>
 
-      <View style={[styles.footer, { borderTopColor: colors.card }]}>
-        <TouchableOpacity
-          style={[styles.nextButton, { backgroundColor: colors.tint }]}
-          onPress={handleNext}
-          accessibilityLabel="Next step"
-          accessibilityHint="Proceed to location selection"
-          accessibilityRole="button"
-        >
-          <Text style={styles.nextButtonText}>Next: Select Location</Text>
-          <IconSymbol name="chevron.right" size={20} color="#fff" />
-        </TouchableOpacity>
-      </View>
+        <View style={[styles.footer, { borderTopColor: colors.card }]}>
+          <TouchableOpacity
+            style={[styles.nextButton, { backgroundColor: colors.tint }]}
+            onPress={handleNext}
+            accessibilityLabel="Next step"
+            accessibilityHint="Proceed to location selection"
+            accessibilityRole="button"
+          >
+            <Text style={styles.nextButtonText}>Next: Select Location</Text>
+            <IconSymbol name="chevron.right" size={20} color="#fff" />
+          </TouchableOpacity>
+        </View>
+      </KeyboardAvoidingView>
     </SafeAreaView>
   );
 }
 
 const styles = StyleSheet.create({
   container: {
+    flex: 1,
+  },
+  keyboardAvoid: {
     flex: 1,
   },
   centered: {
@@ -215,6 +270,7 @@ const styles = StyleSheet.create({
   },
   content: {
     padding: 20,
+    paddingBottom: 40,
   },
   title: {
     fontSize: 24,
@@ -257,6 +313,7 @@ const styles = StyleSheet.create({
   },
   footer: {
     padding: 20,
+    paddingBottom: Platform.OS === 'ios' ? 44 : 36,
     borderTopWidth: 1,
   },
   nextButton: {
