@@ -15,6 +15,7 @@ provider:
     NODE_ENV: ${self:provider.stage}
     DYNAMODB_WORKERS_TABLE: ${self:service}-workers-${self:provider.stage}
     DYNAMODB_PHOTOS_TABLE: ${self:service}-photos-${self:provider.stage}
+    DYNAMODB_MEDIA_TABLE: ${self:service}-media-${self:provider.stage}
     DYNAMODB_REVIEWS_TABLE: ${self:service}-reviews-${self:provider.stage}
     DYNAMODB_LOCATIONS_TABLE: ${self:service}-locations-${self:provider.stage}
     DYNAMODB_CATEGORIES_TABLE: ${self:service}-categories-${self:provider.stage}
@@ -45,14 +46,14 @@ provider:
             - !Join ['/', [!GetAtt WorkersTable.Arn, 'index/*']]
             - !GetAtt PhotosTable.Arn
             - !Join ['/', [!GetAtt PhotosTable.Arn, 'index/*']]
+            - !GetAtt MediaTable.Arn
+            - !Join ['/', [!GetAtt MediaTable.Arn, 'index/*']]
             - !GetAtt ReviewsTable.Arn
             - !Join ['/', [!GetAtt ReviewsTable.Arn, 'index/*']]
             - !GetAtt LocationsTable.Arn
             - !Join ['/', [!GetAtt LocationsTable.Arn, 'index/*']]
             - !GetAtt CategoriesTable.Arn
             - !GetAtt OtpTable.Arn
-            - !GetAtt AdminsTable.Arn
-            - !Join ['/', [!GetAtt AdminsTable.Arn, 'index/*']]
         - Effect: Allow
           Action:
             - s3:GetObject
@@ -137,7 +138,7 @@ resources:
             Projection:
               ProjectionType: ALL
 
-    # Worker Photos Table
+    # Worker Photos Table (legacy - kept for backward compatibility)
     PhotosTable:
       Type: AWS::DynamoDB::Table
       Properties:
@@ -153,6 +154,36 @@ resources:
             KeyType: HASH
           - AttributeName: sk
             KeyType: RANGE
+
+    # Media Table (photos + videos)
+    MediaTable:
+      Type: AWS::DynamoDB::Table
+      Properties:
+        TableName: ${self:provider.environment.DYNAMODB_MEDIA_TABLE}
+        BillingMode: PAY_PER_REQUEST
+        AttributeDefinitions:
+          - AttributeName: pk
+            AttributeType: S
+          - AttributeName: sk
+            AttributeType: S
+          - AttributeName: workerId
+            AttributeType: S
+          - AttributeName: displayOrder
+            AttributeType: N
+        KeySchema:
+          - AttributeName: pk
+            KeyType: HASH
+          - AttributeName: sk
+            KeyType: RANGE
+        GlobalSecondaryIndexes:
+          - IndexName: WorkerMediaIndex
+            KeySchema:
+              - AttributeName: workerId
+                KeyType: HASH
+              - AttributeName: displayOrder
+                KeyType: RANGE
+            Projection:
+              ProjectionType: ALL
 
     # Reviews Table
     ReviewsTable:
@@ -237,32 +268,6 @@ resources:
         TimeToLiveSpecification:
           AttributeName: expiresAt
           Enabled: true
-
-    # Admins Table
-    AdminsTable:
-      Type: AWS::DynamoDB::Table
-      Properties:
-        TableName: ${self:provider.environment.DYNAMODB_ADMINS_TABLE}
-        BillingMode: PAY_PER_REQUEST
-        AttributeDefinitions:
-          - AttributeName: pk
-            AttributeType: S
-          - AttributeName: sk
-            AttributeType: S
-          - AttributeName: email
-            AttributeType: S
-        KeySchema:
-          - AttributeName: pk
-            KeyType: HASH
-          - AttributeName: sk
-            KeyType: RANGE
-        GlobalSecondaryIndexes:
-          - IndexName: EmailIndex
-            KeySchema:
-              - AttributeName: email
-                KeyType: HASH
-            Projection:
-              ProjectionType: ALL
 
     # S3 Uploads Bucket
     UploadsBucket:
