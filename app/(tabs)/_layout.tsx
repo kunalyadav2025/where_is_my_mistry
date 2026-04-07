@@ -5,9 +5,17 @@ import { HapticTab } from '@/components/haptic-tab';
 import { IconSymbol } from '@/components/ui/icon-symbol';
 import { Colors } from '@/constants/theme';
 import { useColorScheme } from '@/hooks/use-color-scheme';
+import { useAuth } from '@/contexts/AuthContext';
 
 export default function TabLayout() {
   const colorScheme = useColorScheme();
+  const { isAuthenticated, isLoading } = useAuth();
+
+  const getLoginTabTitle = () => {
+    // Show "Login" while loading or if not authenticated
+    if (isLoading || !isAuthenticated) return 'Login';
+    return 'My Profile';
+  };
 
   return (
     <Tabs
@@ -40,7 +48,7 @@ export default function TabLayout() {
       <Tabs.Screen
         name="login"
         options={{
-          title: 'Login',
+          title: getLoginTabTitle(),
           tabBarIcon: ({ color }) => <IconSymbol size={28} name="person.fill" color={color} />,
         }}
       />

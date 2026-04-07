@@ -82,18 +82,38 @@ export default function VerifyOtpScreen() {
     const result = await verifyOtp(params.mobile, fullOtp);
 
     if (result) {
-      // Save auth and navigate
+      // Check if user is a registered worker
+      if (!result.user.workerId) {
+        // Not a registered worker - prompt to register
+        Alert.alert(
+          'Not Registered',
+          'This mobile number is not registered as a worker. Please register first to access your profile.',
+          [
+            {
+              text: 'Register Now',
+              onPress: () => router.replace('/register' as any),
+            },
+            {
+              text: 'Cancel',
+              style: 'cancel',
+              onPress: () => router.replace('/(tabs)' as any),
+            },
+          ]
+        );
+        return;
+      }
+
+      // Save auth for registered worker
       await login(result.token, {
         mobile: result.user.mobile,
         workerId: result.user.workerId,
-        isWorker: !!result.user.workerId,
         isNewUser: result.user.isNewUser,
+        isVerified: result.user.isVerified,
+        role: result.user.role,
       });
 
-      // Navigate based on user status
-      // New users and users without worker profile go to home
-      // They can choose to register as worker from the banner
-      router.replace('/(tabs)' as any);
+      // Navigate to profile page
+      router.replace('/(tabs)/login' as any);
     }
   };
 

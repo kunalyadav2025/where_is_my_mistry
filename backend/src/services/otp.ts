@@ -145,12 +145,22 @@ export async function sendOtp(mobile: string): Promise<SendOtpResult> {
   }
 }
 
+// Dev mode OTP that is always accepted in development
+const DEV_OTP = '123456';
+
 /**
  * Verify an OTP for a mobile number
  */
 export async function verifyOtp(mobile: string, otp: string): Promise<VerifyOtpResult> {
   try {
     const now = Math.floor(Date.now() / 1000);
+
+    // In dev mode, accept the dev OTP without checking the database
+    // This allows testing the full auth flow without needing to track generated OTPs
+    if (process.env.NODE_ENV === 'dev' && otp === DEV_OTP) {
+      logger.info('Dev mode OTP accepted', { mobile: maskMobile(mobile) });
+      return { success: true };
+    }
 
     // Query for the most recent OTP for this mobile
     const result = await dynamodb.send(

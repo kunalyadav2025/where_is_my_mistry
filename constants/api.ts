@@ -1,7 +1,23 @@
 const getApiBaseUrl = (): string => {
-  // Always use production API URL
-  // The backend is deployed to AWS and works for both development and production
-  // Note: localhost doesn't work on physical devices (it refers to the phone itself)
+  // Configuration for API endpoint
+  //
+  // Options:
+  // 1. USE_LOCAL_BACKEND = true  → Use local backend (requires `npm run dev` in backend folder)
+  // 2. USE_LOCAL_BACKEND = false → Use AWS production API (recommended)
+  //
+  // Your workers are stored in AWS DynamoDB, so use the production API.
+
+  const USE_LOCAL_BACKEND = false; // Set to true only if running local backend
+
+  if (USE_LOCAL_BACKEND) {
+    // Local backend configuration
+    // Android emulator: 10.0.2.2, iOS simulator: localhost, Physical device: your computer's IP
+    const LOCAL_IP = '10.0.2.2';
+    const LOCAL_PORT = '3001';
+    return `http://${LOCAL_IP}:${LOCAL_PORT}/api`;
+  }
+
+  // AWS Production API URL
   return 'https://oaa2rqfw3i.execute-api.ap-south-1.amazonaws.com/dev/api';
 };
 
