@@ -5,8 +5,9 @@ import { api } from '@/services/api';
 interface User {
   mobile: string;
   workerId?: string;
-  isWorker: boolean;
   isNewUser: boolean;
+  isVerified?: boolean;
+  role?: 'worker' | 'user'; // 'worker' = registered worker, 'user' = needs to register
 }
 
 interface AuthContextType {
@@ -38,6 +39,18 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       const storedUser = await SecureStore.getItemAsync(USER_KEY);
 
       if (storedToken && storedUser) {
+        // Validate token format - reject dev tokens and invalid tokens
+        // Dev tokens start with 'dev-token-' and should not be persisted across sessions
+        if (storedToken.startsWith('dev-token-')) {
+          if (__DEV__) {
+            console.log('Clearing stale dev token');
+          }
+          await SecureStore.deleteItemAsync(TOKEN_KEY);
+          await SecureStore.deleteItemAsync(USER_KEY);
+          setIsLoading(false);
+          return;
+        }
+
         // Safe JSON parse with validation
         try {
           const parsed = JSON.parse(storedUser);

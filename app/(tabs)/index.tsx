@@ -184,38 +184,37 @@ export default function HomeScreen() {
             </Text>
           </View>
 
-          {/* Rating */}
-          <View style={styles.ratingRow}>
-            <IconSymbol name="star.fill" size={14} color="#F59E0B" />
-            <Text style={[styles.ratingText, { color: colors.text }]}>
-              {worker.avgRating.toFixed(1)}
-            </Text>
-            <Text style={[styles.reviewCount, { color: colors.tabIconDefault }]}>
-              ({worker.reviewCount} reviews)
-            </Text>
+          {/* Rating and CTA Buttons Row */}
+          <View style={styles.ratingButtonsRow}>
+            <View style={styles.ratingRow}>
+              <IconSymbol name="star.fill" size={14} color="#F59E0B" />
+              <Text style={[styles.ratingText, { color: colors.text }]}>
+                {worker.avgRating.toFixed(1)}
+              </Text>
+              <Text style={[styles.reviewCount, { color: colors.tabIconDefault }]}>
+                ({worker.reviewCount} reviews)
+              </Text>
+            </View>
+
+            <View style={styles.ctaButtons}>
+              <TouchableOpacity
+                style={[styles.iconButton, { backgroundColor: colors.primary }]}
+                onPress={() => handleCallPress(worker.mobile)}
+                activeOpacity={0.8}
+              >
+                <IconSymbol name="phone.fill" size={16} color="#FFFFFF" />
+              </TouchableOpacity>
+
+              <TouchableOpacity
+                style={[styles.iconButton, styles.whatsappButton]}
+                onPress={() => handleWhatsAppPress(worker.mobile)}
+                activeOpacity={0.8}
+              >
+                <IconSymbol name="whatsapp" size={16} color="#25D366" />
+              </TouchableOpacity>
+            </View>
           </View>
         </View>
-      </View>
-
-      {/* Card Footer - CTA Buttons */}
-      <View style={styles.cardFooter}>
-        <TouchableOpacity
-          style={[styles.ctaButton, styles.callButton, { backgroundColor: colors.primary }]}
-          onPress={() => handleCallPress(worker.mobile)}
-          activeOpacity={0.8}
-        >
-          <IconSymbol name="phone.fill" size={16} color="#FFFFFF" />
-          <Text style={styles.ctaButtonText}>Call</Text>
-        </TouchableOpacity>
-
-        <TouchableOpacity
-          style={[styles.ctaButton, styles.whatsappButton, { borderColor: colors.primary }]}
-          onPress={() => handleWhatsAppPress(worker.mobile)}
-          activeOpacity={0.8}
-        >
-          <IconSymbol name="message.fill" size={16} color={colors.primary} />
-          <Text style={[styles.whatsappButtonText, { color: colors.primary }]}>WhatsApp</Text>
-        </TouchableOpacity>
       </View>
     </TouchableOpacity>
   );
@@ -494,11 +493,16 @@ const styles = StyleSheet.create({
   experienceText: {
     fontSize: 12,
   },
+  ratingButtonsRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    marginTop: 4,
+  },
   ratingRow: {
     flexDirection: 'row',
     alignItems: 'center',
     gap: 4,
-    marginTop: 6,
   },
   ratingText: {
     fontSize: 14,
@@ -507,36 +511,21 @@ const styles = StyleSheet.create({
   reviewCount: {
     fontSize: 12,
   },
-  cardFooter: {
+  ctaButtons: {
     flexDirection: 'row',
-    gap: 12,
-    marginTop: 16,
-    paddingTop: 16,
-    borderTopWidth: StyleSheet.hairlineWidth,
-    borderTopColor: 'rgba(0,0,0,0.1)',
+    gap: 8,
   },
-  ctaButton: {
-    flex: 1,
-    flexDirection: 'row',
+  iconButton: {
+    width: 36,
+    height: 36,
+    borderRadius: 6,
     alignItems: 'center',
     justifyContent: 'center',
-    gap: 8,
-    paddingVertical: 12,
-    borderRadius: 24,
-  },
-  callButton: {},
-  ctaButtonText: {
-    color: '#FFFFFF',
-    fontSize: 14,
-    fontWeight: '600',
   },
   whatsappButton: {
-    backgroundColor: 'transparent',
-    borderWidth: 1.5,
-  },
-  whatsappButtonText: {
-    fontSize: 14,
-    fontWeight: '600',
+    backgroundColor: '#25D36615',
+    borderWidth: 1,
+    borderColor: '#25D366',
   },
   emptyWrapper: {
     flex: 1,

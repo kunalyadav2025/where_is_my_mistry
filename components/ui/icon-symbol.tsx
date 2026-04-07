@@ -20,6 +20,16 @@ const MAPPING = {
   'chevron.right': 'chevron-right',
   'ruler.fill': 'straighten',
   'person.fill': 'person',
+  'phone.fill': 'call',
+  'whatsapp': 'chat',
+  'mappin': 'location-on',
+  'mappin.circle.fill': 'location-on',
+  'star.fill': 'star',
+  'checkmark.shield.fill': 'verified-user',
+  'location.slash.fill': 'location-off',
+  'wifi.slash': 'wifi-off',
+  'exclamationmark.triangle.fill': 'warning',
+  'person.2.slash.fill': 'person-off',
 } as IconMapping;
 
 /**
